@@ -1,4 +1,4 @@
-name = "local-aq-widget"
+name = "local-aq"
 compatibility_date = "2025-01-01"
 pages_build_output_dir = "."
 
@@ -7,7 +7,7 @@ pages_build_output_dir = "."
 #   wrangler pages secret put ALLOWED_ORIGIN
 #
 # [vars]
-# ALLOWED_ORIGIN = "https://local-aq-widget.pages.dev"
+# ALLOWED_ORIGIN = "https://local-aq.pages.dev"
 
 # OPENAQ_API_KEY must be set as a secret — never put it here.
 # Run once after your first deploy:
