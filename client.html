@@ -602,7 +602,7 @@ function buildMeasureBox(pm25, targetPm25, dotColor, titleText) {
   const projectedLine = alreadyMet
     ? `<div class="measure-already-met">Already within target — no measures needed.</div>`
     : met
-      ? `<div class="measure-projected">Projected daily avg: <strong>${fmt(projected)} µg/m³</strong></div>`
+      ? `<div class="measure-projected">Projected exposure: <strong>${fmt(projected)} µg/m³</strong></div>`
       : `<div class="measure-unachievable">Cannot be fully achieved — best effort shown.</div>
          <div class="measure-projected">Best projected: <strong>${fmt(projected)} µg/m³</strong></div>`;
 
