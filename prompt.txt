@@ -1,0 +1,102 @@
+Create an HTML/JavaScript webpage for deployment on Cloudflare that displays real-time PM2.5 air quality data based on user location. The page should:
+
+CORE FUNCTIONALITY:
+- Use the browser's Geolocation API to get the user's coordinates
+- Query the OpenAQ API (latest version) to find the nearest active PM2.5 monitoring station
+- Display the current PM2.5 level and 24-hour average PM2.5 level from that station
+- Calculate cigarette equivalents based on the 24-hour average (use standard conversion: 1 cigarette ≈ 22 μg/m³ PM2.5)
+
+API KEY MANAGEMENT:
+- The OpenAQ API key will be stored as a Cloudflare secret variable (not hardcoded in the HTML)
+- Create a simple Cloudflare Worker or serverless function that:
+  * Accepts the user's coordinates as query parameters
+  * Retrieves the API key from Cloudflare environment variables
+  * Makes the OpenAQ API request server-side (keeping the API key secure)
+  * Returns the station data to the client
+- The HTML/JavaScript client calls this worker endpoint instead of directly calling OpenAQ API
+- Implement CORS headers appropriately in the worker to allow requests only from your domain
+
+CACHING & RATE LIMITING:
+- Implement browser-based caching using IndexedDB or sessionStorage to prevent excessive API calls
+- Cache strategy:
+  * Store API responses with timestamps
+  * Do not make a new API request if a valid cache entry exists for the same station within the last 30 minutes
+  * If the user's location changes significantly (more than ~5 km away), query for a new nearest station and cache that result
+  * Clear cache entries older than 2 hours automatically
+  * Display a cache indicator showing when data was last updated and if it's from cache
+- Add a manual "Refresh Now" button that allows users to force a fresh API call, but implement a cooldown (e.g., minimum 5 minutes between manual refreshes) to prevent rapid-fire requests
+- Log cache hits vs. API calls to help monitor usage patterns
+
+EXPOSURE GUIDANCE:
+- Implement the following PM2.5 exposure guidance framework with these bands:
+  * Ideal: 0-5 μg/m³ - No special measure needed
+  * Acceptable: >5-15 μg/m³ - Home: HEPA purifier | Work: Standard filtration
+  * Caution: >15-25 μg/m³ - Home: High-capacity purifier with IAQ monitoring | Work: High-efficiency filtration
+  * Elevated Caution: >25-37.5 μg/m³ - Home: High-efficiency mechanical ventilation | Work: High-efficiency filtration
+  * High: >37.5-50 μg/m³ - Home: High-efficiency mechanical ventilation | Work: High-efficiency filtration | Outdoor: Respirator
+  * Very High: >50-75 μg/m³ - Home: High-efficiency mechanical ventilation | Work: High-efficiency filtration | Transit: Mask | Outdoor: Respirator
+  * Extreme: >75 μg/m³ - Ideal exposure cannot be met. Home: High-efficiency mechanical ventilation | Work: High-efficiency filtration | Outdoor: Respirator
+
+- For each band, show:
+  1. Current exposure level classification
+  2. Recommended measures to achieve "Acceptable" exposure (or "Ideal" if already in that range)
+  3. Calculate projected daily exposure with recommended measures applied using these reduction factors:
+     - No special measure: 1.00 (0% reduction)
+     - Doors and windows closed: 0.80 (20% reduction)
+     - HEPA air purifier: 0.50 (50% reduction)
+     - High-capacity purifier with IAQ monitoring: 0.25 (75% reduction)
+     - High-efficiency mechanical ventilation filtration: 0.05 (95% reduction)
+     - Standard filtration at work: 0.60 (40% reduction)
+     - High-efficiency filtration at work: 0.10 (90% reduction)
+     - Baseline transit: 0.50 (50% reduction)
+     - Mask in transit: 0.30 (70% reduction)
+     - Respirator: 0.05 (95% reduction)
+  4. Use time allocation: 13.5 hours home, 8 hours work/school, 1.5 hours transit, 1 hour outdoor
+  5. Calculate and display the resulting daily average exposure with recommended measures
+
+UI/DESIGN:
+- Clean, responsive design that works on mobile and desktop
+- Display prominently: current PM2.5, 24-hour average, cigarette equivalents, current band, and recommended actions
+- Show before/after exposure estimates clearly
+- Use appropriate color coding for exposure bands (green for ideal, yellow for acceptable, orange for caution, red for elevated caution/high/very high, dark red for extreme)
+- Include visual indicators for:
+  * Whether data is "live" or "cached" with last update timestamp
+  * Cache refresh cooldown timer when user tries to refresh before the cooldown period expires
+
+ATTRIBUTION & TRANSPARENCY:
+- In the footer, include:
+  * Station name and operator from OpenAQ data
+  * "Powered by OpenAQ" credit
+  * Data timestamp and refresh indicator (showing "Live" or "Cached as of [time]")
+  * Disclaimer noting this is a decision-support framework and not a replacement for local public health guidance. Include a prominent link labeled "Learn about our methodology" or "How this works" that points to "aq-decision-system-notes.html" (located in the base directory). This detailed page should explain the calculation methodology, evidence-based assumptions, reduction factors, and the rationale behind the guidance framework.
+
+TECHNICAL NOTES:
+- Provide the HTML/JavaScript client file as a single self-contained file
+- Also provide a Cloudflare Worker script that will:
+  * Read the OPENAQ_API_KEY from Cloudflare environment variables
+  * Accept GET requests with latitude and longitude parameters
+  * Call the OpenAQ API securely server-side
+  * Return results with appropriate CORS headers
+  * Include basic rate limiting or request logging if possible
+- Handle geolocation errors gracefully with user-friendly messages
+- Include loading states while fetching data
+- Ensure all code is compatible with Cloudflare deployment
+
+DEPLOYMENT INSTRUCTIONS:
+- The worker will need to be deployed separately to your Cloudflare account
+- Set the OPENAQ_API_KEY environment variable in Cloudflare's worker settings (wrangler.toml or dashboard)
+- The HTML client will make requests to the worker endpoint to fetch data securely
+
+OUTPUT FORMAT:
+Please output the files in this format:
+
+=== CLIENT.HTML ===
+[complete HTML code here]
+
+=== WORKER.JS ===
+[complete Worker code here]
+
+AFTER GENERATING THE CODE:
+Please create the following files in the current directory with the code you've generated:
+- client.html (the HTML/JavaScript client code)
+- worker.js (the Cloudflare Worker script)

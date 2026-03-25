@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Air Quality — PM2.5 Monitor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --radius: 12px;
+      --shadow: 0 2px 12px rgba(0,0,0,.08);
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: #f8fafc;
+      color: #1e293b;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0f4c81 100%);
+      color: #fff;
+      padding: 1.25rem 1.5rem;
+      text-align: center;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p  { font-size: .85rem; opacity: .8; margin-top: .2rem; }
+
+    main {
+      max-width: 720px;
+      margin: 1.5rem auto;
+      padding: 0 1rem 3rem;
+    }
+
+    /* ── Status states ── */
+    #status-area {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+    .spinner {
+      display: inline-block;
+      width: 36px; height: 36px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #0f4c81;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .status-text { margin-top: .75rem; color: #64748b; font-size: .95rem; }
+    .error-box { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 8px; padding: .9rem 1rem; font-size: .9rem; margin-top: 1rem; }
+
+    /* ── Data view ── */
+    #data-view { display: none; }
+
+    /* Band bar */
+    .band-bar {
+      border-radius: var(--radius);
+      padding: .7rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #fff;
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+    .band-bar .band-label { font-size: 1.1rem; }
+    .band-bar .band-unit  { font-size: .8rem; opacity: .85; }
+
+    /* Main metrics grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .75rem;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 480px) {
+      .metrics-grid { grid-template-columns: 1fr 1fr; }
+      .metrics-grid .metric-cig { grid-column: 1 / -1; }
+    }
+    .metric-card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      text-align: center;
+    }
+    .metric-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
+      color: #94a3b8; font-weight: 600; margin-bottom: .3rem; }
+    .metric-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+    .metric-unit  { font-size: .75rem; color: #64748b; margin-top: .2rem; }
+
+    /* Cache / refresh bar */
+    .cache-bar {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: .65rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      margin-bottom: 1rem;
+      font-size: .82rem;
+    }
+    .cache-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      padding: .2rem .6rem;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: .75rem;
+    }
+    .badge-live    { background: #dcfce7; color: #16a34a; }
+    .badge-cached  { background: #fef9c3; color: #854d0e; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+    .dot-live   { background: #16a34a; animation: pulse 2s ease-in-out infinite; }
+    .dot-cached { background: #ca8a04; }
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .4; }
+    }
+    .cache-timestamp { color: #64748b; flex: 1; }
+    .refresh-btn {
+      background: #0f4c81; color: #fff;
+      border: none; cursor: pointer;
+      padding: .35rem .85rem; border-radius: 6px;
+      font-size: .8rem; font-weight: 600;
+      transition: background .15s, opacity .15s;
+      white-space: nowrap;
+    }
+    .refresh-btn:hover:not(:disabled) { background: #1e3a5f; }
+    .refresh-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .cooldown-text { font-size: .75rem; color: #94a3b8; }
+
+    /* Exposure guidance */
+    .section-title {
+      font-size: .72rem; text-transform: uppercase; letter-spacing: .07em;
+      color: #94a3b8; font-weight: 700;
+      margin: 1.25rem 0 .5rem;
+    }
+
+    .guidance-card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .guidance-header {
+      padding: .9rem 1.2rem;
+      font-weight: 600;
+      font-size: .9rem;
+      color: #fff;
+    }
+    .guidance-body { padding: 1rem 1.2rem; }
+    .guidance-desc { font-size: .88rem; color: #475569; margin-bottom: .85rem; }
+
+    /* Measures table */
+    .measures-list { list-style: none; }
+    .measure-item {
+      display: flex;
+      align-items: flex-start;
+      gap: .6rem;
+      padding: .35rem 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: .85rem;
+    }
+    .measure-item:last-child { border-bottom: none; }
+    .measure-env {
+      min-width: 60px;
+      font-weight: 600;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #94a3b8;
+      padding-top: 1px;
+    }
+    .measure-action { color: #334155; }
+    .measure-none   { color: #94a3b8; font-style: italic; }
+
+    /* Before / After exposure comparison */
+    .exposure-compare {
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: .9rem 1rem;
+      margin-top: .85rem;
+    }
+    .compare-title {
+      font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
+      color: #94a3b8; font-weight: 700; margin-bottom: .6rem;
+    }
+    .compare-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .3rem 0;
+      font-size: .88rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .compare-row:last-child { border-bottom: none; }
+    .compare-row-label { color: #64748b; }
+    .compare-row-value { font-weight: 700; }
+    .compare-arrow { text-align: center; font-size: 1.2rem; color: #94a3b8; padding: .2rem 0; }
+    .compare-savings {
+      display: flex;
+      justify-content: space-between;
+      font-size: .82rem;
+      margin-top: .5rem;
+      padding-top: .5rem;
+      border-top: 2px solid #e2e8f0;
+    }
+    .savings-label { color: #64748b; }
+    .savings-value { font-weight: 700; color: #16a34a; }
+
+    /* Station footer */
+    footer {
+      margin-top: 1.5rem;
+      font-size: .78rem;
+      color: #94a3b8;
+      text-align: center;
+      line-height: 1.7;
+    }
+    footer a { color: #0f4c81; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    .station-info { margin-bottom: .4rem; }
+    .disclaimer { font-size: .73rem; max-width: 520px; margin: .5rem auto 0; }
+
+    /* Utility */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Local Air Quality Monitor</h1>
+  <p>Real-time PM2.5 data &amp; exposure guidance</p>
+</header>
+
+<main>
+  <!-- Loading / error states -->
+  <div id="status-area">
+    <div class="spinner" id="spinner"></div>
+    <p class="status-text" id="status-text">Requesting your location…</p>
+    <div class="error-box hidden" id="error-box"></div>
+    <button class="refresh-btn" id="retry-btn" style="margin-top:1rem;display:none"
+      onclick="init()">Try Again</button>
+  </div>
+
+  <!-- Data view (hidden until data loads) -->
+  <div id="data-view">
+
+    <!-- Band indicator bar -->
+    <div class="band-bar" id="band-bar">
+      <span class="band-label" id="band-name">—</span>
+      <span class="band-unit" id="band-range">—</span>
+    </div>
+
+    <!-- Key metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Current PM2.5</div>
+        <div class="metric-value" id="current-val">—</div>
+        <div class="metric-unit">µg/m³</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">24-hr Average</div>
+        <div class="metric-value" id="avg-val">—</div>
+        <div class="metric-unit">µg/m³</div>
+      </div>
+      <div class="metric-card metric-cig">
+        <div class="metric-label">Cigarette Equiv.</div>
+        <div class="metric-value" id="cig-val">—</div>
+        <div class="metric-unit">cigarettes / day</div>
+      </div>
+    </div>
+
+    <!-- Cache / refresh controls -->
+    <div class="cache-bar">
+      <span id="cache-badge"></span>
+      <span class="cache-timestamp" id="cache-timestamp"></span>
+      <span class="cooldown-text hidden" id="cooldown-text"></span>
+      <button class="refresh-btn" id="refresh-btn" onclick="manualRefresh()">
+        ↻ Refresh Now
+      </button>
+    </div>
+
+    <!-- Exposure guidance -->
+    <div class="section-title">Exposure Guidance</div>
+    <div class="guidance-card" id="guidance-card">
+      <div class="guidance-header" id="guidance-header"></div>
+      <div class="guidance-body">
+        <p class="guidance-desc" id="guidance-desc"></p>
+
+        <div class="section-title" style="margin-top:0">Recommended Measures</div>
+        <ul class="measures-list" id="measures-list"></ul>
+
+        <div class="exposure-compare">
+          <div class="compare-title">Projected Daily Average Exposure (weighted)</div>
+          <div class="compare-row">
+            <span class="compare-row-label">Without measures</span>
+            <span class="compare-row-value" id="exp-before">—</span>
+          </div>
+          <div class="compare-arrow">↓</div>
+          <div class="compare-row">
+            <span class="compare-row-label">With recommended measures</span>
+            <span class="compare-row-value" id="exp-after">—</span>
+          </div>
+          <div class="compare-savings">
+            <span class="savings-label">Daily exposure reduction</span>
+            <span class="savings-value" id="exp-savings">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer / attribution -->
+    <footer>
+      <div class="station-info" id="station-info"></div>
+      <div>Powered by <a href="https://openaq.org" target="_blank" rel="noopener">OpenAQ</a></div>
+      <div class="disclaimer">
+        This tool is a decision-support framework and not a replacement for local public health
+        guidance. <a href="aq-decision-system-notes.html">Learn about our methodology</a>.
+      </div>
+    </footer>
+  </div>
+</main>
+
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────────────────────
+// CONFIGURATION — update WORKER_URL before deployment
+// ─────────────────────────────────────────────────────────────
+const WORKER_URL = '/aq-worker';
+
+const CACHE_KEY         = 'aq_cache';
+const LAST_REFRESH_KEY  = 'aq_last_refresh';
+const CACHE_TTL_MS      = 30 * 60 * 1000;   // 30 minutes
+const CACHE_MAX_AGE_MS  = 2 * 60 * 60 * 1000; // 2 hours (auto-clear)
+const REFRESH_COOLDOWN  = 5 * 60 * 1000;    // 5 minutes
+const LOCATION_THRESH_KM = 5;               // significant location change
+
+// ─────────────────────────────────────────────────────────────
+// EXPOSURE BANDS
+// ─────────────────────────────────────────────────────────────
+// Reduction factors:  home, work, transit, outdoor
+// transit defaults to 0.50 (baseline – being inside a vehicle)
+// unless the band explicitly upgrades it.
+const BANDS = [
+  {
+    name: 'Ideal', min: 0, max: 5,
+    color: '#16a34a', bg: '#f0fdf4',
+    rangeLabel: '0 – 5 µg/m³',
+    description: 'Air quality is excellent. No special measures are needed.',
+    target: 'Ideal',
+    measures: { home: 1.00, work: 1.00, transit: 0.50, outdoor: 1.00 },
+    measureLabels: {
+      home:    null,
+      work:    null,
+      transit: null,
+      outdoor: null,
+    },
+  },
+  {
+    name: 'Acceptable', min: 5, max: 15,
+    color: '#65a30d', bg: '#f7fee7',
+    rangeLabel: '5 – 15 µg/m³',
+    description: 'Air quality is acceptable. Run a HEPA purifier at home and ensure standard filtration at work to maintain good indoor air.',
+    target: 'Acceptable',
+    measures: { home: 0.50, work: 0.60, transit: 0.50, outdoor: 1.00 },
+    measureLabels: {
+      home:    'HEPA air purifier',
+      work:    'Standard filtration',
+      transit: null,
+      outdoor: null,
+    },
+  },
+  {
+    name: 'Caution', min: 15, max: 25,
+    color: '#d97706', bg: '#fffbeb',
+    rangeLabel: '15 – 25 µg/m³',
+    description: 'Air quality is at a caution level. Enhanced home purification and high-efficiency work filtration are recommended.',
+    target: 'Acceptable',
+    measures: { home: 0.25, work: 0.10, transit: 0.50, outdoor: 1.00 },
+    measureLabels: {
+      home:    'High-capacity purifier with IAQ monitoring',
+      work:    'High-efficiency filtration',
+      transit: null,
+      outdoor: null,
+    },
+  },
+  {
+    name: 'Elevated Caution', min: 25, max: 37.5,
+    color: '#ea580c', bg: '#fff7ed',
+    rangeLabel: '25 – 37.5 µg/m³',
+    description: 'Air quality is at an elevated caution level. High-efficiency mechanical ventilation is required to protect indoor air quality.',
+    target: 'Acceptable',
+    measures: { home: 0.05, work: 0.10, transit: 0.50, outdoor: 1.00 },
+    measureLabels: {
+      home:    'High-efficiency mechanical ventilation',
+      work:    'High-efficiency filtration',
+      transit: null,
+      outdoor: null,
+    },
+  },
+  {
+    name: 'High', min: 37.5, max: 50,
+    color: '#dc2626', bg: '#fef2f2',
+    rangeLabel: '37.5 – 50 µg/m³',
+    description: 'Air quality is high. Maximum indoor air protection and a respirator outdoors are required.',
+    target: 'Acceptable',
+    measures: { home: 0.05, work: 0.10, transit: 0.50, outdoor: 0.05 },
+    measureLabels: {
+      home:    'High-efficiency mechanical ventilation',
+      work:    'High-efficiency filtration',
+      transit: null,
+      outdoor: 'Respirator',
+    },
+  },
+  {
+    name: 'Very High', min: 50, max: 75,
+    color: '#991b1b', bg: '#fff1f2',
+    rangeLabel: '50 – 75 µg/m³',
+    description: 'Air quality is very high. All indoor and transit protection measures are required. Avoid unnecessary outdoor exposure; wear a respirator when outdoors.',
+    target: 'Acceptable',
+    measures: { home: 0.05, work: 0.10, transit: 0.30, outdoor: 0.05 },
+    measureLabels: {
+      home:    'High-efficiency mechanical ventilation',
+      work:    'High-efficiency filtration',
+      transit: 'Mask in transit',
+      outdoor: 'Respirator',
+    },
+  },
+  {
+    name: 'Extreme', min: 75, max: Infinity,
+    color: '#7f1d1d', bg: '#fdf2f8',
+    rangeLabel: '> 75 µg/m³',
+    description: 'Air quality is extreme. Ideal exposure cannot be achieved. Apply all available protective measures and minimise time outdoors.',
+    target: 'As low as achievable',
+    measures: { home: 0.05, work: 0.10, transit: 0.50, outdoor: 0.05 },
+    measureLabels: {
+      home:    'High-efficiency mechanical ventilation',
+      work:    'High-efficiency filtration',
+      transit: null,
+      outdoor: 'Respirator',
+    },
+  },
+];
+
+// Time allocation (must sum to 24)
+const TIME = { home: 13.5, work: 8, transit: 1.5, outdoor: 1 };
+
+// Baseline — no special measures (transit always has 0.50 baseline)
+const BASELINE = { home: 1.00, work: 1.00, transit: 0.50, outdoor: 1.00 };
+
+// ─────────────────────────────────────────────────────────────
+// UTILITY FUNCTIONS
+// ─────────────────────────────────────────────────────────────
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function getBand(pm25) {
+  return BANDS.find(b => pm25 >= b.min && pm25 < b.max) ?? BANDS[BANDS.length - 1];
+}
+
+function calcDailyExposure(pm25, factors) {
+  const weighted =
+    pm25 * factors.home    * TIME.home +
+    pm25 * factors.work    * TIME.work +
+    pm25 * factors.transit * TIME.transit +
+    pm25 * factors.outdoor * TIME.outdoor;
+  return Math.round((weighted / 24) * 10) / 10;
+}
+
+function fmt(v, dp = 1) {
+  return typeof v === 'number' ? v.toFixed(dp) : '—';
+}
+
+function fmtTime(date) {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// ─────────────────────────────────────────────────────────────
+// CACHE (sessionStorage)
+// ─────────────────────────────────────────────────────────────
+function loadCache() {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    const age = Date.now() - entry.timestamp;
+    if (age > CACHE_MAX_AGE_MS) { sessionStorage.removeItem(CACHE_KEY); return null; }
+    return entry;
+  } catch { return null; }
+}
+
+function saveCache(data, lat, lon) {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+      data, lat, lon, timestamp: Date.now()
+    }));
+  } catch { /* storage full or blocked */ }
+}
+
+function isCacheValid(entry, lat, lon) {
+  if (!entry) return false;
+  const age = Date.now() - entry.timestamp;
+  if (age > CACHE_TTL_MS) return false;
+  const dist = haversineKm(lat, lon, entry.lat, entry.lon);
+  if (dist > LOCATION_THRESH_KM) return false;
+  return true;
+}
+
+function lastRefreshMs() {
+  try { return parseInt(sessionStorage.getItem(LAST_REFRESH_KEY) ?? '0', 10); }
+  catch { return 0; }
+}
+
+function markRefreshed() {
+  try { sessionStorage.setItem(LAST_REFRESH_KEY, String(Date.now())); } catch {}
+}
+
+// ─────────────────────────────────────────────────────────────
+// UI HELPERS
+// ─────────────────────────────────────────────────────────────
+function showStatus(msg, isError = false) {
+  document.getElementById('data-view').style.display = 'none';
+  const area = document.getElementById('status-area');
+  area.style.display = '';
+  document.getElementById('spinner').style.display = isError ? 'none' : '';
+  document.getElementById('status-text').textContent = msg;
+  document.getElementById('status-text').style.display = isError ? 'none' : '';
+  document.getElementById('error-box').classList.toggle('hidden', !isError);
+  if (isError) document.getElementById('error-box').textContent = msg;
+  document.getElementById('retry-btn').style.display = isError ? '' : 'none';
+}
+
+function showData() {
+  document.getElementById('status-area').style.display = 'none';
+  document.getElementById('data-view').style.display = '';
+}
+
+let cooldownInterval = null;
+
+function renderData(data, fromCache, cacheTimestamp) {
+  const current = data.current?.value;
+  const avg     = data.avg24h;
+  const pm25    = avg ?? current ?? 0;
+  const band    = getBand(pm25);
+
+  // Band bar
+  const bar = document.getElementById('band-bar');
+  bar.style.background = band.color;
+  document.getElementById('band-name').textContent  = band.name;
+  document.getElementById('band-range').textContent = band.rangeLabel;
+
+  // Metrics
+  document.getElementById('current-val').textContent = fmt(current);
+  document.getElementById('avg-val').textContent     = fmt(avg);
+  const cigs = avg != null ? Math.round((avg / 22) * 10) / 10 : null;
+  document.getElementById('cig-val').textContent = cigs != null ? fmt(cigs, 1) : '—';
+
+  // Cache badge
+  const badgeEl = document.getElementById('cache-badge');
+  const tsEl    = document.getElementById('cache-timestamp');
+  if (fromCache) {
+    const mins = Math.round((Date.now() - cacheTimestamp) / 60000);
+    badgeEl.innerHTML =
+      `<span class="cache-badge badge-cached"><span class="dot dot-cached"></span>Cached</span>`;
+    tsEl.textContent = `Data from ${mins} min ago`;
+  } else {
+    badgeEl.innerHTML =
+      `<span class="cache-badge badge-live"><span class="dot dot-live"></span>Live</span>`;
+    const lastUpd = data.current?.lastUpdated
+      ? `Station updated ${fmtTime(new Date(data.current.lastUpdated))}`
+      : `Fetched ${fmtTime(new Date())}`;
+    tsEl.textContent = lastUpd;
+  }
+
+  // Refresh button cooldown
+  updateRefreshButton();
+
+  // Guidance
+  const header = document.getElementById('guidance-header');
+  header.style.background = band.color;
+  header.textContent = `${band.name} — ${band.rangeLabel}`;
+
+  document.getElementById('guidance-desc').textContent = band.description;
+
+  // Measures list
+  const list = document.getElementById('measures-list');
+  list.innerHTML = '';
+  const envs = [
+    { key: 'home',    label: 'Home' },
+    { key: 'work',    label: 'Work' },
+    { key: 'transit', label: 'Transit' },
+    { key: 'outdoor', label: 'Outdoor' },
+  ];
+  for (const { key, label } of envs) {
+    const action = band.measureLabels[key];
+    const li = document.createElement('li');
+    li.className = 'measure-item';
+    li.innerHTML = `
+      <span class="measure-env">${label}</span>
+      <span class="${action ? 'measure-action' : 'measure-none'}">
+        ${action ?? 'No special measure'}
+      </span>`;
+    list.appendChild(li);
+  }
+
+  // Exposure comparison
+  const expBefore = calcDailyExposure(pm25, BASELINE);
+  const expAfter  = calcDailyExposure(pm25, band.measures);
+  const saving    = Math.round((expBefore - expAfter) * 10) / 10;
+  const pct       = expBefore > 0 ? Math.round((saving / expBefore) * 100) : 0;
+
+  document.getElementById('exp-before').textContent =
+    `${fmt(expBefore)} µg/m³ (≈${fmt(expBefore/22,1)} cig/day)`;
+  document.getElementById('exp-after').textContent =
+    `${fmt(expAfter)} µg/m³ (≈${fmt(expAfter/22,1)} cig/day)`;
+  document.getElementById('exp-savings').textContent =
+    `−${fmt(saving)} µg/m³ (${pct}% reduction)`;
+
+  // Station footer
+  const loc = data.location;
+  const distKm = loc.distanceMeters != null
+    ? ` · ${(loc.distanceMeters / 1000).toFixed(1)} km away` : '';
+  const parts = [loc.name, loc.locality, loc.country].filter(Boolean);
+  const stationStr = parts.join(', ') + distKm;
+  const ownerStr   = [loc.owner, loc.provider].filter(Boolean).join(' / ');
+
+  document.getElementById('station-info').textContent =
+    `Station: ${stationStr}` + (ownerStr ? ` · Operated by: ${ownerStr}` : '');
+
+  // Log cache activity
+  console.log(`[AQ] Rendered data — source: ${fromCache ? 'cache' : 'live API'}, PM2.5: current=${current} avg24h=${avg}, band: ${band.name}`);
+
+  showData();
+}
+
+function updateRefreshButton() {
+  const btn         = document.getElementById('refresh-btn');
+  const coolTxt     = document.getElementById('cooldown-text');
+  if (cooldownInterval) { clearInterval(cooldownInterval); cooldownInterval = null; }
+
+  const update = () => {
+    const remaining = REFRESH_COOLDOWN - (Date.now() - lastRefreshMs());
+    if (remaining <= 0) {
+      btn.disabled = false;
+      coolTxt.classList.add('hidden');
+      if (cooldownInterval) { clearInterval(cooldownInterval); cooldownInterval = null; }
+    } else {
+      btn.disabled = true;
+      const m = Math.floor(remaining / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      coolTxt.classList.remove('hidden');
+      coolTxt.textContent = `Refresh available in ${m}:${String(s).padStart(2,'0')}`;
+    }
+  };
+
+  update();
+  cooldownInterval = setInterval(update, 1000);
+}
+
+// ─────────────────────────────────────────────────────────────
+// FETCH FROM WORKER
+// ─────────────────────────────────────────────────────────────
+async function fetchFromWorker(lat, lon) {
+  const url = `${WORKER_URL}?lat=${lat}&lon=${lon}`;
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error(body.error ?? `Worker responded ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// ─────────────────────────────────────────────────────────────
+// GEOLOCATION
+// ─────────────────────────────────────────────────────────────
+function getLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation is not supported by your browser.'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      err => {
+        const msgs = {
+          1: 'Location access was denied. Please allow location access and try again.',
+          2: 'Your location could not be determined. Check your device settings.',
+          3: 'Location request timed out. Please try again.',
+        };
+        reject(new Error(msgs[err.code] ?? 'An unknown location error occurred.'));
+      },
+      { timeout: 15000, maximumAge: 60000 }
+    );
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// MAIN LOGIC
+// ─────────────────────────────────────────────────────────────
+let currentLat = null;
+let currentLon = null;
+
+async function init() {
+  document.getElementById('retry-btn').style.display = 'none';
+  document.getElementById('error-box').classList.add('hidden');
+  showStatus('Requesting your location…');
+
+  try {
+    const { lat, lon } = await getLocation();
+    currentLat = lat;
+    currentLon = lon;
+
+    // Check cache first
+    const cached = loadCache();
+    if (isCacheValid(cached, lat, lon)) {
+      console.log('[AQ] Serving from cache (age: ' +
+        Math.round((Date.now() - cached.timestamp) / 60000) + ' min)');
+      renderData(cached.data, true, cached.timestamp);
+      return;
+    }
+
+    showStatus('Finding your nearest PM2.5 station…');
+    const data = await fetchFromWorker(lat, lon);
+
+    saveCache(data, lat, lon);
+    markRefreshed();
+    console.log('[AQ] Fresh API call — data saved to cache');
+    renderData(data, false, Date.now());
+
+  } catch (err) {
+    console.error('[AQ] Error:', err);
+    showStatus(err.message, true);
+  }
+}
+
+async function manualRefresh() {
+  const remaining = REFRESH_COOLDOWN - (Date.now() - lastRefreshMs());
+  if (remaining > 0) return; // cooldown not elapsed (button should be disabled anyway)
+
+  if (!currentLat || !currentLon) { init(); return; }
+
+  showStatus('Fetching fresh data…');
+  try {
+    const data = await fetchFromWorker(currentLat, currentLon);
+    saveCache(data, currentLat, currentLon);
+    markRefreshed();
+    console.log('[AQ] Manual refresh — fresh API call');
+    renderData(data, false, Date.now());
+  } catch (err) {
+    console.error('[AQ] Manual refresh error:', err);
+    // Fall back to cached data if available
+    const cached = loadCache();
+    if (cached) {
+      renderData(cached.data, true, cached.timestamp);
+      alert('Could not fetch fresh data: ' + err.message + '\nShowing cached data.');
+    } else {
+      showStatus(err.message, true);
+    }
+  }
+}
+
+// Start on load
+init();
+</script>
+</body>
+</html>

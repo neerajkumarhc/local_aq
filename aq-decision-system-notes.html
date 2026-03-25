@@ -1,0 +1,1020 @@
+<!DOCTYPE html><html lang="en"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PM2.5 Exposure Guidance</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --line: #dbe2ea;
+      --brand: #0f766e;
+      --brand-soft: #ccfbf1;
+      --danger: #b91c1c;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px 56px;
+    }
+
+    h1, h2, h3 {
+      line-height: 1.2;
+      margin: 0 0 12px;
+      color: var(--text);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    ul, ol {
+      color: var(--muted);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .intro {
+      margin-bottom: 20px;
+    }
+
+    .small {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .wizard-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .step-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--brand-soft);
+      color: #115e59;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .progress {
+      width: 100%;
+      height: 10px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 14.285%;
+      background: linear-gradient(90deg, #14b8a6, #0f766e);
+      transition: width 0.25s ease;
+    }
+
+    .step {
+      display: none;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    .field {
+      margin: 16px 0;
+    }
+
+    label.main-label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    input[type="number"] {
+      width: 100%;
+      max-width: 320px;
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 1rem;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .option {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fff;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .option:hover {
+      border-color: #94a3b8;
+      background: #fcfcfd;
+    }
+
+    .option input {
+      margin-right: 10px;
+      transform: translateY(1px);
+    }
+
+    .option strong {
+      display: inline-block;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+
+    .nav {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      margin-top: 22px;
+      flex-wrap: wrap;
+    }
+
+    .nav-left, .nav-right {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 11px 16px;
+      font-size: 0.98rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #115e59;
+    }
+
+    .btn-secondary {
+      background: #fff;
+      color: var(--text);
+      border-color: #cbd5e1;
+    }
+
+    .btn-secondary:hover {
+      background: #f8fafc;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: transparent;
+    }
+
+    .btn-ghost:hover {
+      color: var(--text);
+      background: #f1f5f9;
+    }
+
+    .error {
+      display: none;
+      margin-top: 10px;
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .result-box {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .badge-ideal { background: #dcfce7; color: #166534; }
+    .badge-acceptable { background: #dbeafe; color: #1d4ed8; }
+    .badge-caution { background: #fef3c7; color: #92400e; }
+    .badge-elevated { background: #fde68a; color: #92400e; }
+    .badge-high { background: #fecaca; color: #991b1b; }
+    .badge-very-high { background: #fbcfe8; color: #9d174d; }
+    .badge-extreme { background: #e5e7eb; color: #111827; }
+
+    .finding {
+      font-size: 1.02rem;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .recommendation-list {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+
+    .recommendation-list li {
+      margin-bottom: 6px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      background: #f8fafc;
+      font-size: 0.95rem;
+      color: #0f172a;
+    }
+
+    td {
+      font-size: 0.95rem;
+      color: #0f172a;
+    }
+
+    .cell-lines {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .who-note, .footnote {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin-top: 12px;
+    }
+
+    .highlight {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .footnotes {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .footnote-box {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fcfcfd;
+    }
+
+    .footnote-box h3 {
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+      font-size: 0.93rem;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    @media (max-width: 700px) {
+      h1 { font-size: 1.7rem; }
+      .card { padding: 16px; }
+      button { width: 100%; }
+      .nav, .nav-left, .nav-right { width: 100%; }
+      .nav-left, .nav-right { flex-direction: column; }
+      input[type="number"] { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="intro">
+      <h1>PM2.5 Exposure Guidance</h1>
+      <p>
+        Most public air pollution messaging is built around AQI systems that combine multiple pollutants into one index and then attach broad advice such as
+        “sensitive groups should reduce prolonged outdoor exertion.” That can be useful for alerts, but it is not always the best tool for making day-to-day
+        decisions about personal particulate exposure. PM2.5 is one of the most consistently studied air pollution metrics in health research, and much of the
+        strongest evidence on long-term and short-term risk is expressed directly in PM2.5 concentrations rather than AQI categories.
+      </p>
+      <p>
+        This framework therefore uses PM2.5 levels anchored to WHO guideline and interim target thresholds, then connects them to practical actions people can
+        actually take: improving indoor filtration, using stronger purifiers, and using masks or respirators when needed. The goal is to move from general warning
+        language to actionable recommendations tied to exposure reduction. In other words, instead of only saying air is “bad” or “moderate,” this page asks:
+        given a PM2.5 level, what combination of realistic measures is likely to move exposure closer to a safer range?
+      </p>
+      <p class="small">
+        Assumptions used in this guidance framework include a typical day divided across home, work or school, transit, and outdoor time, along with approximate reduction
+        factors for indoor filtration, purifiers, masks, and respirators.
+      </p>
+    </section>
+
+    <section class="card" aria-labelledby="calculator-title">
+      <div class="wizard-header">
+        <div>
+          <h2 id="calculator-title">Exposure recommendation calculator</h2>
+          <p class="small">Enter the PM2.5 level, then step through the wizard to get a recommendation.</p>
+        </div>
+        <div class="step-pill" id="stepPill">Step 1 of 7</div>
+      </div>
+
+      <div class="progress" aria-hidden="true">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+
+      <form id="wizardForm">
+        <div class="step active" data-step="1">
+          <h3>Enter ambient PM2.5</h3>
+          <div class="field">
+            <label class="main-label" for="pm25">24-hour PM2.5 level (μg/m³)</label>
+            <input id="pm25" name="pm25" type="number" min="0" step="0.1" placeholder="e.g. 28.5">
+            <div class="error" id="pm25Error">Please enter a valid PM2.5 value of 0 or greater.</div>
+          </div>
+        </div>
+
+        <div class="step" data-step="2">
+          <h3>Select your target</h3>
+          <p class="small">Choose the exposure outcome you want to aim for.</p>
+          <div class="options" role="radiogroup" aria-label="Exposure target">
+            <label class="option">
+              <input type="radio" name="target" value="Ideal">
+              <strong>Ideal exposure</strong><br>
+              Aim for a daily exposure close to the WHO guideline range.
+            </label>
+            <label class="option">
+              <input type="radio" name="target" value="Acceptable">
+              <strong>Acceptable exposure</strong><br>
+              Aim for a more practical reduction target when ideal may be difficult to achieve.
+            </label>
+          </div>
+          <div class="error" id="targetError">Please select a target.</div>
+        </div>
+
+        <div class="step" data-step="3">
+          <h3>Home intervention preference</h3>
+          <p class="small">Choose the most complex home measure you already have or would be open to using.</p>
+          <div class="options" role="radiogroup" aria-label="Home intervention preference">
+            <label class="option">
+              <input type="radio" name="homePreference" value="No intervention only">
+              <strong>No intervention only</strong><br>
+              Prefer not to add a new home measure.
+            </label>
+            <label class="option">
+              <input type="radio" name="homePreference" value="Plug and play intervention">
+              <strong>Plug and play intervention</strong><br>
+              Open to portable purifiers or other simple add-on measures.
+            </label>
+            <label class="option">
+              <input type="radio" name="homePreference" value="Complex installation">
+              <strong>Complex installation</strong><br>
+              Open to stronger installed building or mechanical filtration solutions.
+            </label>
+          </div>
+          <div class="error" id="homePreferenceError">Please select an option.</div>
+        </div>
+
+        <div class="step" data-step="4">
+          <h3>Work or school filtration level</h3>
+          <p class="small">Choose the level that best matches your work or school environment.</p>
+          <div class="options" role="radiogroup" aria-label="Work or school filtration level">
+            <label class="option">
+              <input type="radio" name="workFiltration" value="Unknown or no special filtration">
+              <strong>Unknown or no special filtration</strong><br>
+              No known upgraded filtration beyond ordinary ventilation conditions.
+            </label>
+            <label class="option">
+              <input type="radio" name="workFiltration" value="Standard filtration">
+              <strong>Standard filtration</strong><br>
+              Typical indoor filtration or air conditioning without strong particle-focused control.
+            </label>
+            <label class="option">
+              <input type="radio" name="workFiltration" value="High-efficiency filtration">
+              <strong>High-efficiency filtration</strong><br>
+              Stronger particle-focused filtration or well-managed cleaner indoor air.
+            </label>
+          </div>
+          <div class="error" id="workFiltrationError">Please select an option.</div>
+        </div>
+
+        <div class="step" data-step="5">
+          <h3>Transit preference</h3>
+          <p class="small">This helps tailor the result where transit-related protection may matter.</p>
+          <div class="options" role="radiogroup" aria-label="Transit preference">
+            <label class="option">
+              <input type="radio" name="transitPreference" value="Prefer no face covering in transit">
+              <strong>Prefer no face covering in transit</strong><br>
+              Use baseline transit assumptions where possible.
+            </label>
+            <label class="option">
+              <input type="radio" name="transitPreference" value="Open to a mask in transit">
+              <strong>Open to a mask in transit</strong><br>
+              Comfortable using a mask in transit if recommended.
+            </label>
+          </div>
+          <div class="error" id="transitPreferenceError">Please select an option.</div>
+        </div>
+
+        <div class="step" data-step="6">
+          <h3>Outdoor protection preference</h3>
+          <p class="small">This helps contextualize recommendations involving outdoor exposure.</p>
+          <div class="options" role="radiogroup" aria-label="Outdoor protection preference">
+            <label class="option">
+              <input type="radio" name="outdoorPreference" value="Prefer no face covering outdoors">
+              <strong>Prefer no face covering outdoors</strong><br>
+              Prefer recommendations that avoid outdoor masks where possible.
+            </label>
+            <label class="option">
+              <input type="radio" name="outdoorPreference" value="Open to a respirator outdoors">
+              <strong>Open to a respirator outdoors</strong><br>
+              Comfortable using a respirator if recommended.
+            </label>
+          </div>
+          <div class="error" id="outdoorPreferenceError">Please select an option.</div>
+        </div>
+
+        <div class="step" data-step="7">
+          <h3>Final finding</h3>
+          <div id="finalResult" class="result-grid"></div>
+        </div>
+
+        <div class="nav">
+          <div class="nav-left">
+            <button type="button" class="btn-secondary" id="prevBtn">Previous</button>
+          </div>
+          <div class="nav-right">
+            <button type="button" class="btn-ghost" id="resetBtn">Reset</button>
+            <button type="button" class="btn-primary" id="nextBtn">Next</button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Reference table</h2>
+      <p class="small">
+        WHO references below use the 2021 WHO Air Quality Guidelines structure: the annual guideline is 5 μg/m³,
+        with interim targets at 10, 15, 25, 35, and 75 μg/m³.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Band</th>
+              <th>24-h PM2.5 (μg/m³)</th>
+              <th>WHO reference</th>
+              <th>To achieve <strong>Ideal exposure</strong></th>
+              <th>To achieve <strong>Acceptable exposure</strong></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Ideal</strong></td>
+              <td>0–5</td>
+              <td>At or below the WHO air quality guideline</td>
+              <td>No special measure needed.</td>
+              <td>No special measure needed.</td>
+            </tr>
+            <tr>
+              <td><strong>Acceptable</strong></td>
+              <td>&gt;5–15</td>
+              <td>Above the WHO guideline and up to WHO interim target 3</td>
+              <td>
+                <div class="cell-lines">
+                  <div>Home: HEPA air purifier</div>
+                  <div>Work: Standard filtration</div>
+                </div>
+              </td>
+              <td>No special measure needed.</td>
+            </tr>
+            <tr>
+              <td><strong>Caution</strong></td>
+              <td>&gt;15–25</td>
+              <td>Above WHO interim target 3 and up to WHO interim target 2</td>
+              <td>
+                <div class="cell-lines">
+                  <div>Home: High-capacity purifier with IAQ monitoring</div>
+                  <div>Work: High-efficiency filtration</div>
+                </div>
+              </td>
+              <td>
+                <div class="cell-lines">
+                  <div>Home: Doors and windows closed</div>
+                  <div>Work: Standard filtration</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Elevated Caution</strong></td>
+              <td>&gt;25–37.5</td>
+              <td>Above WHO interim target 2 and near or up to WHO interim target 1</td>
+              <td>
+                <div class="cell-lines">
+                  <div>Home: High-efficiency mechanical ventilation filtration</div>
+                  <div>Work: High-efficiency filtration</div>
+                </div>
+              </td>
+              <td>
+                <div class="cell-lines">
+                  <div>Home: HEPA air purifier</div>
+                  <div>Work: High-efficiency filtration</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>High</strong></td>
+              <td>&gt;37.5–50</td>
+              <td>Above WHO interim target 1</td>
+              <td>
+                <div class="cell-lines">
+                  <div>Home: High-efficiency mechanical ventilation filtration</div>
+                  <div>Work: High-efficiency filtration</div>
+                  <div>Outdoor: Respirator</div>
+                </div>
+              </td>
+              <td>
+                <div class="cell-lines">
+                  <div>Home: HEPA air purifier</div>
+                  <div>Work: High-efficiency filtration</div>
+                  <div>Outdoor: Respirator</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Very High</strong></td>
+              <td>&gt;50–75</td>
+              <td>Substantially above WHO interim target 1 and up to 75</td>
+              <td>
+                <div class="cell-lines">
+                  <div>Home: High-efficiency mechanical ventilation filtration</div>
+                  <div>Work: High-efficiency filtration</div>
+                  <div>Transit: Mask</div>
+                  <div>Outdoor: Respirator</div>
+                </div>
+              </td>
+              <td>
+                <div class="cell-lines">
+                  <div>Home: High-efficiency mechanical ventilation filtration</div>
+                  <div>Work: High-efficiency filtration</div>
+                  <div>Outdoor: Respirator</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Extreme</strong></td>
+              <td>&gt;75</td>
+              <td>Above WHO interim target 1 by a wide margin</td>
+              <td>Ideal exposure cannot be met.</td>
+              <td>
+                <div class="cell-lines">
+                  <div>Home: High-efficiency mechanical ventilation filtration</div>
+                  <div>Work: High-efficiency filtration</div>
+                  <div>Outdoor: Respirator</div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="who-note">
+        <span class="highlight">WHO reference note:</span> The table uses WHO 2021 PM2.5 guideline and interim target thresholds as anchors for public communication.
+        The band labels and recommendations are part of this framework and are not official WHO categories.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Footnotes</h2>
+      <div class="footnotes">
+        <div class="footnote-box">
+          <h3>Calculation logic</h3>
+          <p class="small">
+            The recommendation framework estimates average daily exposure using a weighted time model across home, work or school, transit, and outdoor time.
+            A simplified structure is:
+          </p>
+          <p class="mono">
+            Daily exposure = (home hours × ambient PM2.5 × home factor + work hours × ambient PM2.5 × work factor +
+            transit hours × ambient PM2.5 × transit factor + outdoor hours × ambient PM2.5 × outdoor factor) / 24
+          </p>
+          <p class="small">
+            The working assumptions used in this framework are approximately 13.5 hours at home, 8 hours at work or school, 1.5 hours in transit,
+            and 1 hour outdoors. Recommended measures are selected so that the resulting daily average exposure is brought as close as reasonably
+            possible to the chosen target band.
+          </p>
+        </div>
+
+        <div class="footnote-box">
+          <h3>Evidence-based thumb rules and assumed reduction factors</h3>
+          <ul class="small">
+            <li><strong>No special measure:</strong> assumed exposure factor 1.00, or 0% reduction relative to ambient conditions.</li>
+            <li><strong>Doors and windows closed:</strong> assumed exposure factor 0.80, or about 20% reduction.</li>
+            <li><strong>HEPA air purifier:</strong> assumed exposure factor 0.50, or about 50% reduction.</li>
+            <li><strong>High-capacity purifier with IAQ monitoring:</strong> assumed exposure factor 0.25, or about 75% reduction.</li>
+            <li><strong>High-efficiency mechanical ventilation filtration:</strong> assumed exposure factor 0.05, or about 95% reduction.</li>
+            <li><strong>Standard filtration at work or school:</strong> assumed exposure factor 0.60, or about 40% reduction.</li>
+            <li><strong>High-efficiency filtration at work or school:</strong> assumed exposure factor 0.10, or about 90% reduction.</li>
+            <li><strong>Baseline transit assumption:</strong> assumed exposure factor 0.50, or about 50% reduction.</li>
+            <li><strong>Mask in transit:</strong> assumed exposure factor 0.30, or about 70% reduction.</li>
+            <li><strong>Respirator:</strong> assumed exposure factor 0.05, or about 95% reduction.</li>
+            <li>These values are simplified planning assumptions, not guarantees. Real-world performance depends on room size, air exchange, filter quality, fit, leakage, wear time, and user behavior.</li>
+            <li>PM2.5 is often the pollutant most closely tied to major air pollution health burden estimates and is commonly used in epidemiologic risk studies.</li>
+            <li>Indoor exposure usually tracks outdoor PM2.5 imperfectly; filtration, air cleaning, building tightness, and occupant behavior can substantially reduce indoor concentrations.</li>
+            <li>Portable HEPA purifiers can materially reduce indoor PM2.5, but performance depends on room size, clean air delivery rate, placement, filter condition, and run time.</li>
+            <li>Higher-capacity purification and tighter indoor control become more important as ambient PM2.5 rises because small percentage differences translate into larger exposure differences.</li>
+            <li>Well-fitted respirators generally reduce particulate exposure more reliably than loose or poorly fitted masks, especially at higher pollution levels.</li>
+            <li>At very high ambient PM2.5 levels, even strong home and workplace controls may not fully achieve an ideal daily exposure target, which is why the framework treats some conditions as not fully correctable.</li>
+          </ul>
+        </div>
+
+        <div class="footnote-box">
+          <h3>Important limitation</h3>
+          <p class="small">
+            This is a decision-support framework for communication and planning. It does not replace local public health guidance, occupational standards,
+            clinical advice, or building-specific measurements. Real-world performance varies with air exchange rates, purifier sizing, fit and adherence,
+            time spent in each microenvironment, and the accuracy of the PM2.5 input itself.
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const steps = Array.from(document.querySelectorAll('.step'));
+    const stepPill = document.getElementById('stepPill');
+    const progressBar = document.getElementById('progressBar');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const finalResult = document.getElementById('finalResult');
+    const totalSteps = 7;
+
+    let currentStep = 1;
+
+    const guidance = [
+      {
+        band: "Ideal",
+        min: 0,
+        max: 5,
+        badge: "badge-ideal",
+        who: "At or below the WHO air quality guideline",
+        ideal: ["No special measure needed."],
+        acceptable: ["No special measure needed."]
+      },
+      {
+        band: "Acceptable",
+        min: 5,
+        max: 15,
+        badge: "badge-acceptable",
+        who: "Above the WHO guideline and up to WHO interim target 3",
+        ideal: ["Home: HEPA air purifier", "Work: Standard filtration"],
+        acceptable: ["No special measure needed."]
+      },
+      {
+        band: "Caution",
+        min: 15,
+        max: 25,
+        badge: "badge-caution",
+        who: "Above WHO interim target 3 and up to WHO interim target 2",
+        ideal: ["Home: High-capacity purifier with IAQ monitoring", "Work: High-efficiency filtration"],
+        acceptable: ["Home: Doors and windows closed", "Work: Standard filtration"]
+      },
+      {
+        band: "Elevated Caution",
+        min: 25,
+        max: 37.5,
+        badge: "badge-elevated",
+        who: "Above WHO interim target 2 and near or up to WHO interim target 1",
+        ideal: ["Home: High-efficiency mechanical ventilation filtration", "Work: High-efficiency filtration"],
+        acceptable: ["Home: HEPA air purifier", "Work: High-efficiency filtration"]
+      },
+      {
+        band: "High",
+        min: 37.5,
+        max: 50,
+        badge: "badge-high",
+        who: "Above WHO interim target 1",
+        ideal: ["Home: High-efficiency mechanical ventilation filtration", "Work: High-efficiency filtration", "Outdoor: Respirator"],
+        acceptable: ["Home: HEPA air purifier", "Work: High-efficiency filtration", "Outdoor: Respirator"]
+      },
+      {
+        band: "Very High",
+        min: 50,
+        max: 75,
+        badge: "badge-very-high",
+        who: "Substantially above WHO interim target 1 and up to 75",
+        ideal: ["Home: High-efficiency mechanical ventilation filtration", "Work: High-efficiency filtration", "Transit: Mask", "Outdoor: Respirator"],
+        acceptable: ["Home: High-efficiency mechanical ventilation filtration", "Work: High-efficiency filtration", "Outdoor: Respirator"]
+      },
+      {
+        band: "Extreme",
+        min: 75,
+        max: Infinity,
+        badge: "badge-extreme",
+        who: "Above WHO interim target 1 by a wide margin",
+        ideal: ["Ideal exposure cannot be met."],
+        acceptable: ["Home: High-efficiency mechanical ventilation filtration", "Work: High-efficiency filtration", "Outdoor: Respirator"]
+      }
+    ];
+
+    function showStep(step) {
+      steps.forEach((el, index) => {
+        el.classList.toggle('active', index === step - 1);
+      });
+
+      currentStep = step;
+      stepPill.textContent = `Step ${step} of ${totalSteps}`;
+      progressBar.style.width = `${(step / totalSteps) * 100}%`;
+
+      prevBtn.style.visibility = step === 1 ? 'hidden' : 'visible';
+      nextBtn.textContent = step === totalSteps ? 'Finish' : 'Next';
+    }
+
+    function getSelectedValue(name) {
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      return checked ? checked.value : "";
+    }
+
+    function validateStep(step) {
+      let valid = true;
+
+      document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
+
+      if (step === 1) {
+        const pm25 = document.getElementById('pm25').value.trim();
+        const num = Number(pm25);
+        if (pm25 === "" || Number.isNaN(num) || num < 0) {
+          document.getElementById('pm25Error').style.display = 'block';
+          valid = false;
+        }
+      }
+
+      if (step === 2 && !getSelectedValue('target')) {
+        document.getElementById('targetError').style.display = 'block';
+        valid = false;
+      }
+
+      if (step === 3 && !getSelectedValue('homePreference')) {
+        document.getElementById('homePreferenceError').style.display = 'block';
+        valid = false;
+      }
+
+      if (step === 4 && !getSelectedValue('workFiltration')) {
+        document.getElementById('workFiltrationError').style.display = 'block';
+        valid = false;
+      }
+
+      if (step === 5 && !getSelectedValue('transitPreference')) {
+        document.getElementById('transitPreferenceError').style.display = 'block';
+        valid = false;
+      }
+
+      if (step === 6 && !getSelectedValue('outdoorPreference')) {
+        document.getElementById('outdoorPreferenceError').style.display = 'block';
+        valid = false;
+      }
+
+      return valid;
+    }
+
+    function classifyBand(value) {
+      if (value <= 5) return guidance[0];
+      if (value > 5 && value <= 15) return guidance[1];
+      if (value > 15 && value <= 25) return guidance[2];
+      if (value > 25 && value <= 37.5) return guidance[3];
+      if (value > 37.5 && value <= 50) return guidance[4];
+      if (value > 50 && value <= 75) return guidance[5];
+      return guidance[6];
+    }
+
+    function cloneRecommendations(list) {
+      return Array.isArray(list) ? [...list] : [];
+    }
+
+    function personalizeRecommendation(bandObj, target, homePreference, workFiltration, transitPreference, outdoorPreference) {
+      let items = cloneRecommendations(target === "Ideal" ? bandObj.ideal : bandObj.acceptable);
+
+      if (bandObj.band === "Extreme" && target === "Ideal") {
+        return items;
+      }
+
+      if (
+        bandObj.band === "Very High" &&
+        target === "Ideal" &&
+        transitPreference === "Prefer no face covering in transit"
+      ) {
+        items = items.map(item =>
+          item === "Transit: Mask" ? "Transit: Mask recommended in the framework; user preference noted" : item
+        );
+      }
+
+      if (
+        homePreference === "No intervention only" &&
+        items.some(item => item.startsWith("Home:"))
+      ) {
+        items.push("Note: Your home preference is more restrictive than the framework recommendation.");
+      }
+
+      if (
+        homePreference === "Plug and play intervention" &&
+        items.some(item => item.includes("High-efficiency mechanical ventilation filtration"))
+      ) {
+        items.push("Note: The framework calls for a more complex home installation than your stated preference.");
+      }
+
+      if (
+        workFiltration === "Unknown or no special filtration" &&
+        items.some(item => item.includes("Work: High-efficiency filtration"))
+      ) {
+        items.push("Note: Your current work or school setting may provide less filtration than the framework assumes.");
+      }
+
+      if (
+        workFiltration === "Standard filtration" &&
+        items.some(item => item.includes("Work: High-efficiency filtration"))
+      ) {
+        items.push("Note: Reaching this target may depend on access to stronger work or school filtration.");
+      }
+
+      if (
+        outdoorPreference === "Prefer no face covering outdoors" &&
+        items.some(item => item.includes("Outdoor: Respirator"))
+      ) {
+        items.push("Note: The framework includes outdoor respirator use at this pollution level.");
+      }
+
+      return items;
+    }
+
+    function renderFinal() {
+      const pm25 = Number(document.getElementById('pm25').value.trim());
+      const target = getSelectedValue('target');
+      const homePreference = getSelectedValue('homePreference');
+      const workFiltration = getSelectedValue('workFiltration');
+      const transitPreference = getSelectedValue('transitPreference');
+      const outdoorPreference = getSelectedValue('outdoorPreference');
+
+      const bandObj = classifyBand(pm25);
+      const items = personalizeRecommendation(
+        bandObj,
+        target,
+        homePreference,
+        workFiltration,
+        transitPreference,
+        outdoorPreference
+      );
+
+      let rangeText = "";
+      if (bandObj.max === Infinity) {
+        rangeText = `>75 μg/m³`;
+      } else if (bandObj.min === 0) {
+        rangeText = `0–5 μg/m³`;
+      } else {
+        rangeText = `>${bandObj.min}–${bandObj.max} μg/m³`;
+      }
+
+      const introText = target === "Ideal"
+        ? "Based on the PM2.5 level entered, this is the framework recommendation to aim for ideal exposure."
+        : "Based on the PM2.5 level entered, this is the framework recommendation to aim for acceptable exposure.";
+
+      const listHtml = items.length === 1 && items[0] === "No special measure needed."
+        ? `<p class="finding"><strong>No special measure needed.</strong></p>`
+        : items.length === 1 && items[0] === "Ideal exposure cannot be met."
+          ? `<p class="finding"><strong>Ideal exposure cannot be met.</strong></p>`
+          : `<ul class="recommendation-list">${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
+
+      finalResult.innerHTML = `
+        <div class="result-box">
+          <div class="badge ${bandObj.badge}">${bandObj.band}</div>
+          <p class="finding"><strong>Entered PM2.5:</strong> ${pm25.toFixed(1)} μg/m³</p>
+          <p class="finding"><strong>Band range:</strong> ${rangeText}</p>
+          <p class="finding"><strong>WHO reference:</strong> ${bandObj.who}</p>
+          <p class="finding"><strong>Target:</strong> ${target}</p>
+          <p class="finding">${introText}</p>
+          ${listHtml}
+        </div>
+        <div class="result-box">
+          <p class="finding"><strong>Your selections</strong></p>
+          <ul class="recommendation-list">
+            <li>Home intervention preference: ${homePreference}</li>
+            <li>Work or school filtration: ${workFiltration}</li>
+            <li>Transit preference: ${transitPreference}</li>
+            <li>Outdoor protection preference: ${outdoorPreference}</li>
+          </ul>
+          <p class="footnote">
+            This calculator follows the same framework as the reference table below. It is a communication tool, not a medical device or an official WHO classification system.
+          </p>
+        </div>
+      `;
+    }
+
+    nextBtn.addEventListener('click', () => {
+      if (currentStep < totalSteps) {
+        if (!validateStep(currentStep)) return;
+        if (currentStep === totalSteps - 1) renderFinal();
+        showStep(currentStep + 1);
+      } else {
+        showStep(1);
+      }
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (currentStep > 1) showStep(currentStep - 1);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      document.getElementById('wizardForm').reset();
+      document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
+      finalResult.innerHTML = '';
+      showStep(1);
+    });
+
+    showStep(1);
+  </script>
+
+
+</body></html>
