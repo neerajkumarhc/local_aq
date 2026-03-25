@@ -140,6 +140,27 @@ export async function onRequest({ request, env }) {
       avg24h = Math.round(currentValue * 10) / 10;
     }
 
+    // ── Step 4: Annual average via /years endpoint ──
+    const yearsUrl =
+      `https://api.openaq.org/v3/sensors/${pm25Sensor.id}/years` +
+      `?limit=2`;
+
+    const yearsResp = await fetch(yearsUrl, { headers });
+    let avgAnnual = null;
+
+    let annualYear = null;
+
+    if (yearsResp.ok) {
+      const d = await yearsResp.json();
+      if (d.results?.length) {
+        const r = d.results[0];
+        const rawAvg = r.summary?.avg ?? r.value ?? null;
+        if (rawAvg !== null) avgAnnual = Math.round(rawAvg * 10) / 10;
+        const fromStr = r.period?.datetimeFrom?.utc ?? r.datetime?.from ?? null;
+        if (fromStr) annualYear = new Date(fromStr).getFullYear();
+      }
+    }
+
     const roundedCurrent = currentValue !== null
       ? Math.round(currentValue * 10) / 10
       : null;
@@ -161,6 +182,8 @@ export async function onRequest({ request, env }) {
         lastUpdated,
       },
       avg24h,
+      avgAnnual,
+      annualYear,
       measurementCount,
       serverTimestamp: now.toISOString(),
     }, 200, corsHeaders);
