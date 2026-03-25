@@ -53,10 +53,9 @@ export async function onRequest({ request, env }) {
     const locUrl =
       `https://api.openaq.org/v3/locations` +
       `?coordinates=${lat},${lon}` +
-      `&radius=100000` +
+      `&radius=25000` +
       `&parameters_id=2` +
-      `&limit=5` +
-      `&order_by=distance`;
+      `&limit=10`;
 
     const locResp = await fetch(locUrl, { headers });
     if (!locResp.ok) {
@@ -64,6 +63,9 @@ export async function onRequest({ request, env }) {
       throw new Error(`OpenAQ locations ${locResp.status}: ${txt.slice(0, 300)}`);
     }
     const locData = await locResp.json();
+
+    // Sort by distance ascending (API doesn't support order_by=distance)
+    locData.results?.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
 
     if (!locData.results?.length) {
       return json(
