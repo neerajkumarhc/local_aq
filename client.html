@@ -116,6 +116,12 @@
       font-size: .78rem;
       color: var(--muted);
     }
+    .band-indicator-who {
+      font-size: .72rem;
+      color: var(--muted);
+      font-style: italic;
+      margin-top: .1rem;
+    }
 
     /* ── Metrics grid ── */
     .metrics-grid {
@@ -215,10 +221,17 @@
     .guidance-band-name {
       font-weight: 700; font-size: .9rem; color: var(--text);
     }
+    .guidance-who {
+      font-size: .76rem;
+      color: var(--muted);
+      font-style: italic;
+      padding-left: 1.5rem;
+      margin-bottom: .45rem;
+    }
     .guidance-desc {
       font-size: .84rem;
       color: var(--muted);
-      padding-left: 1.5rem;   /* align under band name */
+      padding-left: 1.5rem;
       margin-bottom: 0;
     }
 
@@ -233,9 +246,10 @@
     }
 
     .measure-box {
-      background: var(--bg);
+      background: var(--card);
       border: 1px solid var(--border);
       border-radius: 10px;
+      box-shadow: var(--shadow);
       padding: .8rem .9rem;
     }
     .measure-box-title {
@@ -313,7 +327,7 @@
 <body>
 
 <header>
-  <h1 id="page-title">Air Quality Monitor</h1>
+  <h1 id="page-title">Air Quality at Your Location</h1>
   <p id="page-subtitle">Real-time PM2.5 &amp; exposure guidance</p>
 </header>
 
@@ -336,6 +350,7 @@
       <div>
         <div class="band-indicator-name" id="band-name">—</div>
         <div class="band-indicator-range" id="band-range">—</div>
+        <div class="band-indicator-who" id="band-who"></div>
       </div>
     </div>
 
@@ -373,6 +388,7 @@
         <span class="band-dot-sm" id="guidance-dot"></span>
         <span class="guidance-band-name" id="guidance-band-name">—</span>
       </div>
+      <p class="guidance-who" id="guidance-who"></p>
       <p class="guidance-desc" id="guidance-desc"></p>
     </div>
 
@@ -388,7 +404,7 @@
       <div>Powered by <a href="https://openaq.org" target="_blank" rel="noopener">OpenAQ</a></div>
       <div class="disclaimer">
         Decision-support tool — not a replacement for local public health guidance.
-        <a href="aq-decision-system-notes.html">Learn about our methodology</a>.
+        <a href="aq-decision-system-notes.html" target="_blank" rel="noopener">Learn about our methodology</a>.
       </div>
     </footer>
   </div>
@@ -414,18 +430,25 @@ const LOCATION_THRESH_KM = 5;
 // ─────────────────────────────────────────────────────────────
 const BANDS = [
   { name: 'Ideal',            min: 0,    max: 5,        color: '#10B981', rangeLabel: '0 – 5 µg/m³',
+    whoRef: "At or below the WHO's annual PM2.5 exposure guideline",
     description: 'Air quality is excellent. No special measures are needed.' },
   { name: 'Acceptable',       min: 5,    max: 15,       color: '#84CC16', rangeLabel: '5 – 15 µg/m³',
+    whoRef: "At or below the WHO's daily PM2.5 exposure guideline",
     description: 'Air quality is acceptable. Light measures can help maintain good indoor air.' },
   { name: 'Caution',          min: 15,   max: 25,       color: '#F59E0B', rangeLabel: '15 – 25 µg/m³',
+    whoRef: "At or below the WHO's daily PM2.5 exposure interim target 4",
     description: 'Air quality is at a caution level. Enhanced indoor measures are recommended.' },
   { name: 'Elevated Caution', min: 25,   max: 37.5,     color: '#F97316', rangeLabel: '25 – 37.5 µg/m³',
+    whoRef: "At or below the WHO's daily PM2.5 exposure interim target 3",
     description: 'Air quality is elevated. Strong protective measures are required indoors.' },
   { name: 'High',             min: 37.5, max: 50,       color: '#EF4444', rangeLabel: '37.5 – 50 µg/m³',
+    whoRef: "At or below the WHO's daily PM2.5 exposure interim target 2",
     description: 'Air quality is high. Maximum indoor protection and a respirator outdoors are required.' },
   { name: 'Very High',        min: 50,   max: 75,       color: '#B91C1C', rangeLabel: '50 – 75 µg/m³',
+    whoRef: "At or below the WHO's daily PM2.5 exposure interim target 1",
     description: 'Air quality is very high. Comprehensive protection is required at all times.' },
   { name: 'Extreme',          min: 75,   max: Infinity, color: '#7C3AED', rangeLabel: '> 75 µg/m³',
+    whoRef: "Above all the WHO's daily PM2.5 exposure targets",
     description: 'Air quality is extreme. Ideal exposure cannot be achieved. Use all available measures.' },
 ];
 
@@ -610,6 +633,7 @@ function renderData(data, fromCache, cacheTimestamp) {
   document.getElementById('band-dot').style.background   = band.color;
   document.getElementById('band-name').textContent        = band.name;
   document.getElementById('band-range').textContent       = band.rangeLabel;
+  document.getElementById('band-who').textContent         = band.whoRef;
 
   // Metrics
   document.getElementById('current-val').textContent = fmt(current);
@@ -635,15 +659,16 @@ function renderData(data, fromCache, cacheTimestamp) {
   updateRefreshButton();
 
   // Guidance card (dot + name + description, no colored bg)
-  document.getElementById('guidance-dot').style.background = band.color;
-  document.getElementById('guidance-band-name').textContent = band.name;
-  document.getElementById('guidance-desc').textContent      = band.description;
+  document.getElementById('guidance-dot').style.background  = band.color;
+  document.getElementById('guidance-band-name').textContent  = band.name;
+  document.getElementById('guidance-who').textContent        = band.whoRef;
+  document.getElementById('guidance-desc').textContent       = band.description;
 
   // Two measures boxes
   document.getElementById('box-ideal').innerHTML =
-    buildMeasureBox(pm25, 5,  '#10B981', 'To achieve Ideal  ≤5 µg/m³');
+    buildMeasureBox(pm25, 5,  '#10B981', 'To achieve Ideal  ≤5 ug/m³');
   document.getElementById('box-acceptable').innerHTML =
-    buildMeasureBox(pm25, 15, '#84CC16', 'To achieve Acceptable  ≤15 µg/m³');
+    buildMeasureBox(pm25, 15, '#84CC16', 'To achieve Acceptable  ≤15 ug/m³');
 
   // Footer
   const loc     = data.location;
