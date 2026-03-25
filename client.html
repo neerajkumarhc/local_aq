@@ -3,268 +3,343 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Local Air Quality — PM2.5 Monitor</title>
+  <title>Air Quality Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --radius: 12px;
-      --shadow: 0 2px 12px rgba(0,0,0,.08);
-      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --bg:           #F4F5FA;
+      --card:         #FFFFFF;
+      --primary:      #0000A1;
+      --primary-soft: #EBEBFF;
+      --primary-hover:#7D7DBA;
+      --green:        #487c54;
+      --text:         #0A0A1A;
+      --muted:        #8F8F8F;
+      --border:       #E2E2E2;
+      --shadow:       0 2px 12px rgba(0,0,161,.06);
+      --radius:       14px;
+      --font: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
     body {
       font-family: var(--font);
-      background: #f8fafc;
-      color: #1e293b;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
+    /* ── Header ── */
     header {
-      background: linear-gradient(135deg, #1e3a5f 0%, #0f4c81 100%);
-      color: #fff;
-      padding: 1.25rem 1.5rem;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 1.1rem 1.5rem;
       text-align: center;
     }
-    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
-    header p  { font-size: .85rem; opacity: .8; margin-top: .2rem; }
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: -.02em;
+    }
+    header p {
+      font-size: .8rem;
+      color: var(--muted);
+      margin-top: .15rem;
+    }
 
     main {
-      max-width: 720px;
-      margin: 1.5rem auto;
+      max-width: 700px;
+      margin: 1.25rem auto;
       padding: 0 1rem 3rem;
     }
 
-    /* ── Status states ── */
+    /* ── Status / loading ── */
     #status-area {
-      background: #fff;
+      background: var(--card);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 2rem 1.5rem;
+      padding: 2.5rem 1.5rem;
       text-align: center;
     }
     .spinner {
       display: inline-block;
-      width: 36px; height: 36px;
-      border: 3px solid #e2e8f0;
-      border-top-color: #0f4c81;
+      width: 34px; height: 34px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
       border-radius: 50%;
-      animation: spin .8s linear infinite;
+      animation: spin .75s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .status-text { margin-top: .75rem; color: #64748b; font-size: .95rem; }
-    .error-box { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca;
-      border-radius: 8px; padding: .9rem 1rem; font-size: .9rem; margin-top: 1rem; }
+    .status-text { margin-top: .75rem; color: var(--muted); font-size: .9rem; }
+    .error-box {
+      color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 8px; padding: .85rem 1rem; font-size: .88rem; margin-top: 1rem;
+    }
+    .retry-btn {
+      margin-top: 1rem;
+      background: var(--primary); color: #fff;
+      border: none; cursor: pointer;
+      padding: .45rem 1.1rem; border-radius: 7px;
+      font-size: .85rem; font-weight: 600;
+    }
 
     /* ── Data view ── */
     #data-view { display: none; }
 
-    /* Band bar */
-    .band-bar {
+    /* ── Band indicator ── */
+    .band-indicator {
+      background: var(--card);
       border-radius: var(--radius);
-      padding: .7rem 1.2rem;
+      box-shadow: var(--shadow);
+      padding: .9rem 1.1rem;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      color: #fff;
-      font-weight: 600;
-      font-size: 1rem;
-      margin-bottom: 1rem;
+      gap: .85rem;
+      margin-bottom: .75rem;
     }
-    .band-bar .band-label { font-size: 1.1rem; }
-    .band-bar .band-unit  { font-size: .8rem; opacity: .85; }
+    .band-dot-lg {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 4px rgba(0,0,0,.06);
+    }
+    .band-indicator-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .band-indicator-range {
+      font-size: .78rem;
+      color: var(--muted);
+    }
 
-    /* Main metrics grid */
+    /* ── Metrics grid ── */
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: .75rem;
-      margin-bottom: 1rem;
+      gap: .65rem;
+      margin-bottom: .75rem;
     }
-    @media (max-width: 480px) {
+    @media (max-width: 460px) {
       .metrics-grid { grid-template-columns: 1fr 1fr; }
-      .metrics-grid .metric-cig { grid-column: 1 / -1; }
+      .metric-cig   { grid-column: 1 / -1; }
     }
     .metric-card {
-      background: #fff;
+      background: var(--card);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 1rem;
+      padding: .9rem .8rem;
       text-align: center;
     }
-    .metric-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
-      color: #94a3b8; font-weight: 600; margin-bottom: .3rem; }
-    .metric-value { font-size: 2rem; font-weight: 800; line-height: 1; }
-    .metric-unit  { font-size: .75rem; color: #64748b; margin-top: .2rem; }
+    .metric-label {
+      font-size: .68rem; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--muted); font-weight: 600; margin-bottom: .25rem;
+    }
+    .metric-value { font-size: 1.9rem; font-weight: 800; line-height: 1; color: var(--text); }
+    .metric-unit  { font-size: .7rem; color: var(--muted); margin-top: .2rem; }
 
-    /* Cache / refresh bar */
+    /* ── Cache bar ── */
     .cache-bar {
-      background: #fff;
+      background: var(--card);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: .65rem 1rem;
+      padding: .55rem .9rem;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: .75rem;
+      gap: .6rem;
       margin-bottom: 1rem;
-      font-size: .82rem;
+      font-size: .8rem;
     }
     .cache-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: .3rem;
-      padding: .2rem .6rem;
-      border-radius: 20px;
-      font-weight: 600;
-      font-size: .75rem;
+      display: inline-flex; align-items: center; gap: .28rem;
+      padding: .18rem .55rem; border-radius: 20px;
+      font-weight: 600; font-size: .72rem; flex-shrink: 0;
     }
-    .badge-live    { background: #dcfce7; color: #16a34a; }
-    .badge-cached  { background: #fef9c3; color: #854d0e; }
-    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-    .dot-live   { background: #16a34a; animation: pulse 2s ease-in-out infinite; }
-    .dot-cached { background: #ca8a04; }
-    @keyframes pulse {
-      0%,100% { opacity: 1; } 50% { opacity: .4; }
-    }
-    .cache-timestamp { color: #64748b; flex: 1; }
-    .refresh-btn {
-      background: #0f4c81; color: #fff;
-      border: none; cursor: pointer;
-      padding: .35rem .85rem; border-radius: 6px;
-      font-size: .8rem; font-weight: 600;
-      transition: background .15s, opacity .15s;
-      white-space: nowrap;
-    }
-    .refresh-btn:hover:not(:disabled) { background: #1e3a5f; }
-    .refresh-btn:disabled { opacity: .5; cursor: not-allowed; }
-    .cooldown-text { font-size: .75rem; color: #94a3b8; }
+    .badge-live   { background: #E6F0EA; color: var(--green); }
+    .badge-cached { background: #FEF9C3; color: #854D0E; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .dot-live   { background: var(--green); animation: pulse 2s ease-in-out infinite; }
+    .dot-cached { background: #CA8A04; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+    .cache-timestamp { color: var(--muted); flex: 1; }
+    .cooldown-text   { font-size: .72rem; color: #a0aab4; }
 
-    /* Exposure guidance */
-    .section-title {
-      font-size: .72rem; text-transform: uppercase; letter-spacing: .07em;
-      color: #94a3b8; font-weight: 700;
-      margin: 1.25rem 0 .5rem;
+    /* Subtle refresh button */
+    .refresh-btn {
+      background: #EEF2F7;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      padding: .28rem .7rem;
+      border-radius: 6px;
+      font-size: .75rem;
+      font-weight: 500;
+      transition: background .15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .refresh-btn:hover:not(:disabled) { background: #DDE5EF; }
+    .refresh-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── Guidance section ── */
+    .section-label {
+      font-size: .68rem; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--muted); font-weight: 700;
+      margin: 1.1rem 0 .5rem;
     }
 
     .guidance-card {
-      background: #fff;
+      background: var(--card);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      overflow: hidden;
-      margin-bottom: 1rem;
+      padding: 1rem 1.1rem;
+      margin-bottom: .75rem;
     }
-    .guidance-header {
-      padding: .9rem 1.2rem;
-      font-weight: 600;
-      font-size: .9rem;
-      color: #fff;
-    }
-    .guidance-body { padding: 1rem 1.2rem; }
-    .guidance-desc { font-size: .88rem; color: #475569; margin-bottom: .85rem; }
 
-    /* Measures table */
-    .measures-list { list-style: none; }
-    .measure-item {
+    /* Band summary row in guidance */
+    .guidance-band-row {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: .6rem;
-      padding: .35rem 0;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: .85rem;
+      margin-bottom: .6rem;
     }
-    .measure-item:last-child { border-bottom: none; }
+    .band-dot-sm {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .guidance-band-name {
+      font-weight: 700; font-size: .9rem; color: var(--text);
+    }
+    .guidance-desc {
+      font-size: .84rem;
+      color: var(--muted);
+      padding-left: 1.5rem;   /* align under band name */
+      margin-bottom: 0;
+    }
+
+    /* ── Two parallel measure boxes ── */
+    .measures-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .65rem;
+    }
+    @media (max-width: 520px) {
+      .measures-grid { grid-template-columns: 1fr; }
+    }
+
+    .measure-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .8rem .9rem;
+    }
+    .measure-box-title {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: .6rem;
+    }
+    .measure-box-title .band-dot-sm { flex-shrink: 0; }
+
+    .measure-row {
+      display: flex;
+      gap: .5rem;
+      padding: .28rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .82rem;
+      align-items: flex-start;
+    }
+    .measure-row:last-of-type { border-bottom: none; }
     .measure-env {
-      min-width: 60px;
-      font-weight: 600;
-      font-size: .75rem;
+      min-width: 56px;
+      font-size: .68rem;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .04em;
-      color: #94a3b8;
+      color: #9BAAB8;
       padding-top: 1px;
+      flex-shrink: 0;
     }
-    .measure-action { color: #334155; }
-    .measure-none   { color: #94a3b8; font-style: italic; }
+    .measure-action { color: var(--text); }
+    .measure-none   { color: #B0BEC5; font-style: italic; }
 
-    /* Before / After exposure comparison */
-    .exposure-compare {
-      background: #f8fafc;
-      border-radius: 8px;
-      padding: .9rem 1rem;
-      margin-top: .85rem;
+    .measure-projected {
+      margin-top: .55rem;
+      font-size: .75rem;
+      color: var(--muted);
+      padding-top: .45rem;
+      border-top: 1px solid var(--border);
     }
-    .compare-title {
-      font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
-      color: #94a3b8; font-weight: 700; margin-bottom: .6rem;
+    .measure-projected strong { color: var(--text); }
+
+    .measure-unachievable {
+      font-size: .8rem;
+      color: #B45309;
+      font-style: italic;
+      margin-top: .35rem;
     }
-    .compare-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: .3rem 0;
-      font-size: .88rem;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .compare-row:last-child { border-bottom: none; }
-    .compare-row-label { color: #64748b; }
-    .compare-row-value { font-weight: 700; }
-    .compare-arrow { text-align: center; font-size: 1.2rem; color: #94a3b8; padding: .2rem 0; }
-    .compare-savings {
-      display: flex;
-      justify-content: space-between;
+    .measure-already-met {
       font-size: .82rem;
-      margin-top: .5rem;
-      padding-top: .5rem;
-      border-top: 2px solid #e2e8f0;
+      color: var(--green);
+      font-style: italic;
+      margin-top: .2rem;
     }
-    .savings-label { color: #64748b; }
-    .savings-value { font-weight: 700; color: #16a34a; }
 
-    /* Station footer */
+    /* ── Footer ── */
     footer {
       margin-top: 1.5rem;
-      font-size: .78rem;
-      color: #94a3b8;
+      font-size: .75rem;
+      color: #9BAAB8;
       text-align: center;
-      line-height: 1.7;
+      line-height: 1.75;
     }
-    footer a { color: #0f4c81; text-decoration: none; }
+    footer a { color: var(--primary); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
-    .station-info { margin-bottom: .4rem; }
-    .disclaimer { font-size: .73rem; max-width: 520px; margin: .5rem auto 0; }
+    .disclaimer { font-size: .7rem; max-width: 500px; margin: .35rem auto 0; }
 
-    /* Utility */
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>Local Air Quality Monitor</h1>
-  <p>Real-time PM2.5 data &amp; exposure guidance</p>
+  <h1 id="page-title">Air Quality Monitor</h1>
+  <p id="page-subtitle">Real-time PM2.5 &amp; exposure guidance</p>
 </header>
 
 <main>
-  <!-- Loading / error states -->
+
+  <!-- Loading / error -->
   <div id="status-area">
     <div class="spinner" id="spinner"></div>
     <p class="status-text" id="status-text">Requesting your location…</p>
     <div class="error-box hidden" id="error-box"></div>
-    <button class="refresh-btn" id="retry-btn" style="margin-top:1rem;display:none"
-      onclick="init()">Try Again</button>
+    <button class="retry-btn hidden" id="retry-btn" onclick="init()">Try Again</button>
   </div>
 
-  <!-- Data view (hidden until data loads) -->
+  <!-- Data -->
   <div id="data-view">
 
-    <!-- Band indicator bar -->
-    <div class="band-bar" id="band-bar">
-      <span class="band-label" id="band-name">—</span>
-      <span class="band-unit" id="band-range">—</span>
+    <!-- Band indicator -->
+    <div class="band-indicator">
+      <span class="band-dot-lg" id="band-dot"></span>
+      <div>
+        <div class="band-indicator-name" id="band-name">—</div>
+        <div class="band-indicator-range" id="band-range">—</div>
+      </div>
     </div>
 
-    <!-- Key metrics -->
+    <!-- Metrics -->
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="metric-label">Current PM2.5</div>
@@ -283,210 +358,114 @@
       </div>
     </div>
 
-    <!-- Cache / refresh controls -->
+    <!-- Cache / refresh -->
     <div class="cache-bar">
       <span id="cache-badge"></span>
       <span class="cache-timestamp" id="cache-timestamp"></span>
       <span class="cooldown-text hidden" id="cooldown-text"></span>
-      <button class="refresh-btn" id="refresh-btn" onclick="manualRefresh()">
-        ↻ Refresh Now
-      </button>
+      <button class="refresh-btn" id="refresh-btn" onclick="manualRefresh()">↻ Refresh</button>
     </div>
 
-    <!-- Exposure guidance -->
-    <div class="section-title">Exposure Guidance</div>
-    <div class="guidance-card" id="guidance-card">
-      <div class="guidance-header" id="guidance-header"></div>
-      <div class="guidance-body">
-        <p class="guidance-desc" id="guidance-desc"></p>
-
-        <div class="section-title" style="margin-top:0">Recommended Measures</div>
-        <ul class="measures-list" id="measures-list"></ul>
-
-        <div class="exposure-compare">
-          <div class="compare-title">Projected Daily Average Exposure (weighted)</div>
-          <div class="compare-row">
-            <span class="compare-row-label">Without measures</span>
-            <span class="compare-row-value" id="exp-before">—</span>
-          </div>
-          <div class="compare-arrow">↓</div>
-          <div class="compare-row">
-            <span class="compare-row-label">With recommended measures</span>
-            <span class="compare-row-value" id="exp-after">—</span>
-          </div>
-          <div class="compare-savings">
-            <span class="savings-label">Daily exposure reduction</span>
-            <span class="savings-value" id="exp-savings">—</span>
-          </div>
-        </div>
+    <!-- Guidance -->
+    <div class="section-label">Exposure Guidance</div>
+    <div class="guidance-card">
+      <div class="guidance-band-row">
+        <span class="band-dot-sm" id="guidance-dot"></span>
+        <span class="guidance-band-name" id="guidance-band-name">—</span>
       </div>
+      <p class="guidance-desc" id="guidance-desc"></p>
     </div>
 
-    <!-- Footer / attribution -->
+    <div class="section-label">Recommended Measures</div>
+    <div class="measures-grid">
+      <div class="measure-box" id="box-ideal"></div>
+      <div class="measure-box" id="box-acceptable"></div>
+    </div>
+
+    <!-- Footer -->
     <footer>
-      <div class="station-info" id="station-info"></div>
+      <div id="station-info"></div>
       <div>Powered by <a href="https://openaq.org" target="_blank" rel="noopener">OpenAQ</a></div>
       <div class="disclaimer">
-        This tool is a decision-support framework and not a replacement for local public health
-        guidance. <a href="aq-decision-system-notes.html">Learn about our methodology</a>.
+        Decision-support tool — not a replacement for local public health guidance.
+        <a href="aq-decision-system-notes.html">Learn about our methodology</a>.
       </div>
     </footer>
   </div>
+
 </main>
 
 <script>
 'use strict';
 
 // ─────────────────────────────────────────────────────────────
-// CONFIGURATION — update WORKER_URL before deployment
+// CONFIG
 // ─────────────────────────────────────────────────────────────
-const WORKER_URL = '/aq-worker';
+const WORKER_URL         = '/aq-worker';
+const CACHE_KEY          = 'aq_cache';
+const LAST_REFRESH_KEY   = 'aq_last_refresh';
+const CACHE_TTL_MS       = 30 * 60 * 1000;
+const CACHE_MAX_AGE_MS   = 2  * 60 * 60 * 1000;
+const REFRESH_COOLDOWN   = 5  * 60 * 1000;
+const LOCATION_THRESH_KM = 5;
 
-const CACHE_KEY         = 'aq_cache';
-const LAST_REFRESH_KEY  = 'aq_last_refresh';
-const CACHE_TTL_MS      = 30 * 60 * 1000;   // 30 minutes
-const CACHE_MAX_AGE_MS  = 2 * 60 * 60 * 1000; // 2 hours (auto-clear)
-const REFRESH_COOLDOWN  = 5 * 60 * 1000;    // 5 minutes
-const LOCATION_THRESH_KM = 5;               // significant location change
-
 // ─────────────────────────────────────────────────────────────
-// EXPOSURE BANDS
+// BANDS  (display only — measures computed dynamically)
 // ─────────────────────────────────────────────────────────────
-// Reduction factors:  home, work, transit, outdoor
-// transit defaults to 0.50 (baseline – being inside a vehicle)
-// unless the band explicitly upgrades it.
 const BANDS = [
-  {
-    name: 'Ideal', min: 0, max: 5,
-    color: '#16a34a', bg: '#f0fdf4',
-    rangeLabel: '0 – 5 µg/m³',
-    description: 'Air quality is excellent. No special measures are needed.',
-    target: 'Ideal',
-    measures: { home: 1.00, work: 1.00, transit: 0.50, outdoor: 1.00 },
-    measureLabels: {
-      home:    null,
-      work:    null,
-      transit: null,
-      outdoor: null,
-    },
-  },
-  {
-    name: 'Acceptable', min: 5, max: 15,
-    color: '#65a30d', bg: '#f7fee7',
-    rangeLabel: '5 – 15 µg/m³',
-    description: 'Air quality is acceptable. Run a HEPA purifier at home and ensure standard filtration at work to maintain good indoor air.',
-    target: 'Acceptable',
-    measures: { home: 0.50, work: 0.60, transit: 0.50, outdoor: 1.00 },
-    measureLabels: {
-      home:    'HEPA air purifier',
-      work:    'Standard filtration',
-      transit: null,
-      outdoor: null,
-    },
-  },
-  {
-    name: 'Caution', min: 15, max: 25,
-    color: '#d97706', bg: '#fffbeb',
-    rangeLabel: '15 – 25 µg/m³',
-    description: 'Air quality is at a caution level. Enhanced home purification and high-efficiency work filtration are recommended.',
-    target: 'Acceptable',
-    measures: { home: 0.25, work: 0.10, transit: 0.50, outdoor: 1.00 },
-    measureLabels: {
-      home:    'High-capacity purifier with IAQ monitoring',
-      work:    'High-efficiency filtration',
-      transit: null,
-      outdoor: null,
-    },
-  },
-  {
-    name: 'Elevated Caution', min: 25, max: 37.5,
-    color: '#ea580c', bg: '#fff7ed',
-    rangeLabel: '25 – 37.5 µg/m³',
-    description: 'Air quality is at an elevated caution level. High-efficiency mechanical ventilation is required to protect indoor air quality.',
-    target: 'Acceptable',
-    measures: { home: 0.05, work: 0.10, transit: 0.50, outdoor: 1.00 },
-    measureLabels: {
-      home:    'High-efficiency mechanical ventilation',
-      work:    'High-efficiency filtration',
-      transit: null,
-      outdoor: null,
-    },
-  },
-  {
-    name: 'High', min: 37.5, max: 50,
-    color: '#dc2626', bg: '#fef2f2',
-    rangeLabel: '37.5 – 50 µg/m³',
-    description: 'Air quality is high. Maximum indoor air protection and a respirator outdoors are required.',
-    target: 'Acceptable',
-    measures: { home: 0.05, work: 0.10, transit: 0.50, outdoor: 0.05 },
-    measureLabels: {
-      home:    'High-efficiency mechanical ventilation',
-      work:    'High-efficiency filtration',
-      transit: null,
-      outdoor: 'Respirator',
-    },
-  },
-  {
-    name: 'Very High', min: 50, max: 75,
-    color: '#991b1b', bg: '#fff1f2',
-    rangeLabel: '50 – 75 µg/m³',
-    description: 'Air quality is very high. All indoor and transit protection measures are required. Avoid unnecessary outdoor exposure; wear a respirator when outdoors.',
-    target: 'Acceptable',
-    measures: { home: 0.05, work: 0.10, transit: 0.30, outdoor: 0.05 },
-    measureLabels: {
-      home:    'High-efficiency mechanical ventilation',
-      work:    'High-efficiency filtration',
-      transit: 'Mask in transit',
-      outdoor: 'Respirator',
-    },
-  },
-  {
-    name: 'Extreme', min: 75, max: Infinity,
-    color: '#7f1d1d', bg: '#fdf2f8',
-    rangeLabel: '> 75 µg/m³',
-    description: 'Air quality is extreme. Ideal exposure cannot be achieved. Apply all available protective measures and minimise time outdoors.',
-    target: 'As low as achievable',
-    measures: { home: 0.05, work: 0.10, transit: 0.50, outdoor: 0.05 },
-    measureLabels: {
-      home:    'High-efficiency mechanical ventilation',
-      work:    'High-efficiency filtration',
-      transit: null,
-      outdoor: 'Respirator',
-    },
-  },
+  { name: 'Ideal',            min: 0,    max: 5,        color: '#10B981', rangeLabel: '0 – 5 µg/m³',
+    description: 'Air quality is excellent. No special measures are needed.' },
+  { name: 'Acceptable',       min: 5,    max: 15,       color: '#84CC16', rangeLabel: '5 – 15 µg/m³',
+    description: 'Air quality is acceptable. Light measures can help maintain good indoor air.' },
+  { name: 'Caution',          min: 15,   max: 25,       color: '#F59E0B', rangeLabel: '15 – 25 µg/m³',
+    description: 'Air quality is at a caution level. Enhanced indoor measures are recommended.' },
+  { name: 'Elevated Caution', min: 25,   max: 37.5,     color: '#F97316', rangeLabel: '25 – 37.5 µg/m³',
+    description: 'Air quality is elevated. Strong protective measures are required indoors.' },
+  { name: 'High',             min: 37.5, max: 50,       color: '#EF4444', rangeLabel: '37.5 – 50 µg/m³',
+    description: 'Air quality is high. Maximum indoor protection and a respirator outdoors are required.' },
+  { name: 'Very High',        min: 50,   max: 75,       color: '#B91C1C', rangeLabel: '50 – 75 µg/m³',
+    description: 'Air quality is very high. Comprehensive protection is required at all times.' },
+  { name: 'Extreme',          min: 75,   max: Infinity, color: '#7C3AED', rangeLabel: '> 75 µg/m³',
+    description: 'Air quality is extreme. Ideal exposure cannot be achieved. Use all available measures.' },
 ];
 
-// Time allocation (must sum to 24)
+// ─────────────────────────────────────────────────────────────
+// MEASURE PRIORITY  (applied in order until target is met)
+// Each item upgrades ONE environment's reduction factor.
+// Starting baseline: home 1.00 · work 1.00 · transit 0.50 · outdoor 1.00
+// ─────────────────────────────────────────────────────────────
+const ESCALATING_MEASURES = [
+  { env: 'home',    label: 'Doors and windows closed',                   factor: 0.80 },
+  { env: 'work',    label: 'Standard filtration',                        factor: 0.60 },
+  { env: 'work',    label: 'High-efficiency filtration',                 factor: 0.10 },
+  { env: 'home',    label: 'HEPA air purifier',                          factor: 0.50 },
+  { env: 'home',    label: 'High-capacity purifier with IAQ monitoring', factor: 0.25 },
+  { env: 'transit', label: 'Mask in transit',                            factor: 0.30 },
+  { env: 'outdoor', label: 'Respirator',                                 factor: 0.05 },
+  { env: 'home',    label: 'High-efficiency mechanical ventilation',     factor: 0.05 },
+];
+
+// Time allocation (hours, must sum to 24)
 const TIME = { home: 13.5, work: 8, transit: 1.5, outdoor: 1 };
 
-// Baseline — no special measures (transit always has 0.50 baseline)
-const BASELINE = { home: 1.00, work: 1.00, transit: 0.50, outdoor: 1.00 };
-
 // ─────────────────────────────────────────────────────────────
-// UTILITY FUNCTIONS
+// UTILITY
 // ─────────────────────────────────────────────────────────────
 function haversineKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const R = 6371, d2r = Math.PI / 180;
+  const dLat = (lat2 - lat1) * d2r, dLon = (lon2 - lon1) * d2r;
+  const a = Math.sin(dLat/2)**2 +
+    Math.cos(lat1*d2r) * Math.cos(lat2*d2r) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 function getBand(pm25) {
   return BANDS.find(b => pm25 >= b.min && pm25 < b.max) ?? BANDS[BANDS.length - 1];
 }
 
-function calcDailyExposure(pm25, factors) {
-  const weighted =
-    pm25 * factors.home    * TIME.home +
-    pm25 * factors.work    * TIME.work +
-    pm25 * factors.transit * TIME.transit +
-    pm25 * factors.outdoor * TIME.outdoor;
-  return Math.round((weighted / 24) * 10) / 10;
+function calcDaily(pm25, f) {
+  return (pm25*f.home*TIME.home + pm25*f.work*TIME.work +
+          pm25*f.transit*TIME.transit + pm25*f.outdoor*TIME.outdoor) / 24;
 }
 
 function fmt(v, dp = 1) {
@@ -498,39 +477,58 @@ function fmtTime(date) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// CACHE (sessionStorage)
+// MEASURE FINDER
+// Returns the minimum measure set (one per env) that achieves
+// targetPm25 as a daily weighted average.
+// ─────────────────────────────────────────────────────────────
+function findMeasures(pm25, targetPm25) {
+  const f = { home: 1.00, work: 1.00, transit: 0.50, outdoor: 1.00 };
+  const labels = { home: null, work: null, transit: null, outdoor: null };
+
+  if (calcDaily(pm25, f) <= targetPm25) {
+    return { labels, projected: calcDaily(pm25, f), met: true };
+  }
+
+  for (const m of ESCALATING_MEASURES) {
+    f[m.env]      = m.factor;
+    labels[m.env] = m.label;
+    if (calcDaily(pm25, f) <= targetPm25) {
+      return { labels, projected: calcDaily(pm25, f), met: true };
+    }
+  }
+
+  // All measures exhausted — show best achievable
+  return { labels, projected: calcDaily(pm25, f), met: false };
+}
+
+// ─────────────────────────────────────────────────────────────
+// CACHE
 // ─────────────────────────────────────────────────────────────
 function loadCache() {
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const entry = JSON.parse(raw);
-    const age = Date.now() - entry.timestamp;
-    if (age > CACHE_MAX_AGE_MS) { sessionStorage.removeItem(CACHE_KEY); return null; }
+    const entry = JSON.parse(sessionStorage.getItem(CACHE_KEY) ?? 'null');
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > CACHE_MAX_AGE_MS) {
+      sessionStorage.removeItem(CACHE_KEY); return null;
+    }
     return entry;
   } catch { return null; }
 }
 
 function saveCache(data, lat, lon) {
   try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({
-      data, lat, lon, timestamp: Date.now()
-    }));
-  } catch { /* storage full or blocked */ }
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, lat, lon, timestamp: Date.now() }));
+  } catch {}
 }
 
 function isCacheValid(entry, lat, lon) {
   if (!entry) return false;
-  const age = Date.now() - entry.timestamp;
-  if (age > CACHE_TTL_MS) return false;
-  const dist = haversineKm(lat, lon, entry.lat, entry.lon);
-  if (dist > LOCATION_THRESH_KM) return false;
-  return true;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) return false;
+  return haversineKm(lat, lon, entry.lat, entry.lon) <= LOCATION_THRESH_KM;
 }
 
 function lastRefreshMs() {
-  try { return parseInt(sessionStorage.getItem(LAST_REFRESH_KEY) ?? '0', 10); }
-  catch { return 0; }
+  try { return parseInt(sessionStorage.getItem(LAST_REFRESH_KEY) ?? '0', 10); } catch { return 0; }
 }
 
 function markRefreshed() {
@@ -542,19 +540,56 @@ function markRefreshed() {
 // ─────────────────────────────────────────────────────────────
 function showStatus(msg, isError = false) {
   document.getElementById('data-view').style.display = 'none';
-  const area = document.getElementById('status-area');
-  area.style.display = '';
-  document.getElementById('spinner').style.display = isError ? 'none' : '';
-  document.getElementById('status-text').textContent = msg;
+  document.getElementById('status-area').style.display = '';
+  document.getElementById('spinner').style.display     = isError ? 'none' : '';
+  document.getElementById('status-text').textContent   = msg;
   document.getElementById('status-text').style.display = isError ? 'none' : '';
   document.getElementById('error-box').classList.toggle('hidden', !isError);
   if (isError) document.getElementById('error-box').textContent = msg;
-  document.getElementById('retry-btn').style.display = isError ? '' : 'none';
+  document.getElementById('retry-btn').classList.toggle('hidden', !isError);
 }
 
 function showData() {
   document.getElementById('status-area').style.display = 'none';
-  document.getElementById('data-view').style.display = 'block';
+  document.getElementById('data-view').style.display   = 'block';
+}
+
+function buildMeasureBox(pm25, targetPm25, dotColor, titleText) {
+  const { labels, projected, met } = findMeasures(pm25, targetPm25);
+  const alreadyMet = calcDaily(pm25, { home:1,work:1,transit:.5,outdoor:1 }) <= targetPm25;
+
+  const envs = [
+    { key: 'home',    label: 'Home' },
+    { key: 'work',    label: 'Work' },
+    { key: 'transit', label: 'Transit' },
+    { key: 'outdoor', label: 'Outdoor' },
+  ];
+
+  let rows = '';
+  if (!alreadyMet) {
+    for (const { key, label } of envs) {
+      const action = labels[key];
+      rows += `<div class="measure-row">
+        <span class="measure-env">${label}</span>
+        <span class="${action ? 'measure-action' : 'measure-none'}">${action ?? 'No special measure'}</span>
+      </div>`;
+    }
+  }
+
+  const projectedLine = alreadyMet
+    ? `<div class="measure-already-met">Already within target — no measures needed.</div>`
+    : met
+      ? `<div class="measure-projected">Projected daily avg: <strong>${fmt(projected)} µg/m³</strong></div>`
+      : `<div class="measure-unachievable">Cannot be fully achieved — best effort shown.</div>
+         <div class="measure-projected">Best projected: <strong>${fmt(projected)} µg/m³</strong></div>`;
+
+  return `
+    <div class="measure-box-title">
+      <span class="band-dot-sm" style="background:${dotColor}"></span>
+      ${titleText}
+    </div>
+    ${rows}
+    ${projectedLine}`;
 }
 
 let cooldownInterval = null;
@@ -565,16 +600,21 @@ function renderData(data, fromCache, cacheTimestamp) {
   const pm25    = avg ?? current ?? 0;
   const band    = getBand(pm25);
 
-  // Band bar
-  const bar = document.getElementById('band-bar');
-  bar.style.background = band.color;
-  document.getElementById('band-name').textContent  = band.name;
-  document.getElementById('band-range').textContent = band.rangeLabel;
+  // Dynamic page title
+  const locationName = data.location?.locality || data.location?.name || 'Your Location';
+  document.title = `Air Quality at ${locationName}`;
+  document.getElementById('page-title').textContent    = `Air Quality at ${locationName}`;
+  document.getElementById('page-subtitle').textContent = 'PM2.5 · Real-time exposure guidance';
+
+  // Band indicator
+  document.getElementById('band-dot').style.background   = band.color;
+  document.getElementById('band-name').textContent        = band.name;
+  document.getElementById('band-range').textContent       = band.rangeLabel;
 
   // Metrics
   document.getElementById('current-val').textContent = fmt(current);
   document.getElementById('avg-val').textContent     = fmt(avg);
-  const cigs = avg != null ? Math.round((avg / 22) * 10) / 10 : null;
+  const cigs = avg != null ? avg / 22 : null;
   document.getElementById('cig-val').textContent = cigs != null ? fmt(cigs, 1) : '—';
 
   // Cache badge
@@ -582,109 +622,68 @@ function renderData(data, fromCache, cacheTimestamp) {
   const tsEl    = document.getElementById('cache-timestamp');
   if (fromCache) {
     const mins = Math.round((Date.now() - cacheTimestamp) / 60000);
-    badgeEl.innerHTML =
-      `<span class="cache-badge badge-cached"><span class="dot dot-cached"></span>Cached</span>`;
-    tsEl.textContent = `Data from ${mins} min ago`;
+    badgeEl.innerHTML = `<span class="cache-badge badge-cached"><span class="dot dot-cached"></span>Cached</span>`;
+    tsEl.textContent  = `Data from ${mins} min ago`;
   } else {
-    badgeEl.innerHTML =
-      `<span class="cache-badge badge-live"><span class="dot dot-live"></span>Live</span>`;
-    const lastUpd = data.current?.lastUpdated
+    badgeEl.innerHTML = `<span class="cache-badge badge-live"><span class="dot dot-live"></span>Live</span>`;
+    const upd = data.current?.lastUpdated
       ? `Station updated ${fmtTime(new Date(data.current.lastUpdated))}`
       : `Fetched ${fmtTime(new Date())}`;
-    tsEl.textContent = lastUpd;
+    tsEl.textContent = upd;
   }
 
-  // Refresh button cooldown
   updateRefreshButton();
 
-  // Guidance
-  const header = document.getElementById('guidance-header');
-  header.style.background = band.color;
-  header.textContent = `${band.name} — ${band.rangeLabel}`;
+  // Guidance card (dot + name + description, no colored bg)
+  document.getElementById('guidance-dot').style.background = band.color;
+  document.getElementById('guidance-band-name').textContent = band.name;
+  document.getElementById('guidance-desc').textContent      = band.description;
 
-  document.getElementById('guidance-desc').textContent = band.description;
+  // Two measures boxes
+  document.getElementById('box-ideal').innerHTML =
+    buildMeasureBox(pm25, 5,  '#10B981', 'To achieve Ideal  ≤5 µg/m³');
+  document.getElementById('box-acceptable').innerHTML =
+    buildMeasureBox(pm25, 15, '#84CC16', 'To achieve Acceptable  ≤15 µg/m³');
 
-  // Measures list
-  const list = document.getElementById('measures-list');
-  list.innerHTML = '';
-  const envs = [
-    { key: 'home',    label: 'Home' },
-    { key: 'work',    label: 'Work' },
-    { key: 'transit', label: 'Transit' },
-    { key: 'outdoor', label: 'Outdoor' },
-  ];
-  for (const { key, label } of envs) {
-    const action = band.measureLabels[key];
-    const li = document.createElement('li');
-    li.className = 'measure-item';
-    li.innerHTML = `
-      <span class="measure-env">${label}</span>
-      <span class="${action ? 'measure-action' : 'measure-none'}">
-        ${action ?? 'No special measure'}
-      </span>`;
-    list.appendChild(li);
-  }
-
-  // Exposure comparison
-  const expBefore = calcDailyExposure(pm25, BASELINE);
-  const expAfter  = calcDailyExposure(pm25, band.measures);
-  const saving    = Math.round((expBefore - expAfter) * 10) / 10;
-  const pct       = expBefore > 0 ? Math.round((saving / expBefore) * 100) : 0;
-
-  document.getElementById('exp-before').textContent =
-    `${fmt(expBefore)} µg/m³ (≈${fmt(expBefore/22,1)} cig/day)`;
-  document.getElementById('exp-after').textContent =
-    `${fmt(expAfter)} µg/m³ (≈${fmt(expAfter/22,1)} cig/day)`;
-  document.getElementById('exp-savings').textContent =
-    `−${fmt(saving)} µg/m³ (${pct}% reduction)`;
-
-  // Station footer
-  const loc = data.location;
-  const distKm = loc.distanceMeters != null
-    ? ` · ${(loc.distanceMeters / 1000).toFixed(1)} km away` : '';
-  const parts = [loc.name, loc.locality, loc.country].filter(Boolean);
-  const stationStr = parts.join(', ') + distKm;
-  const ownerStr   = [loc.owner, loc.provider].filter(Boolean).join(' / ');
-
+  // Footer
+  const loc     = data.location;
+  const distKm  = loc.distanceMeters ? ` · ${(loc.distanceMeters/1000).toFixed(1)} km away` : '';
+  const parts   = [loc.name, loc.locality, loc.country].filter(Boolean);
+  const ownerStr = [loc.owner, loc.provider].filter(Boolean).join(' / ');
   document.getElementById('station-info').textContent =
-    `Station: ${stationStr}` + (ownerStr ? ` · Operated by: ${ownerStr}` : '');
+    `Station: ${parts.join(', ')}${distKm}` + (ownerStr ? ` · Operated by: ${ownerStr}` : '');
 
-  // Log cache activity
-  console.log(`[AQ] Rendered data — source: ${fromCache ? 'cache' : 'live API'}, PM2.5: current=${current} avg24h=${avg}, band: ${band.name}`);
-
+  console.log(`[AQ] Rendered — source: ${fromCache ? 'cache' : 'live'}, PM2.5: current=${current} avg24h=${avg}, band: ${band.name}`);
   showData();
 }
 
 function updateRefreshButton() {
-  const btn         = document.getElementById('refresh-btn');
-  const coolTxt     = document.getElementById('cooldown-text');
+  const btn    = document.getElementById('refresh-btn');
+  const coolTxt = document.getElementById('cooldown-text');
   if (cooldownInterval) { clearInterval(cooldownInterval); cooldownInterval = null; }
 
-  const update = () => {
-    const remaining = REFRESH_COOLDOWN - (Date.now() - lastRefreshMs());
-    if (remaining <= 0) {
+  const tick = () => {
+    const rem = REFRESH_COOLDOWN - (Date.now() - lastRefreshMs());
+    if (rem <= 0) {
       btn.disabled = false;
       coolTxt.classList.add('hidden');
-      if (cooldownInterval) { clearInterval(cooldownInterval); cooldownInterval = null; }
+      clearInterval(cooldownInterval); cooldownInterval = null;
     } else {
       btn.disabled = true;
-      const m = Math.floor(remaining / 60000);
-      const s = Math.floor((remaining % 60000) / 1000);
+      const m = Math.floor(rem / 60000), s = Math.floor((rem % 60000) / 1000);
       coolTxt.classList.remove('hidden');
-      coolTxt.textContent = `Refresh available in ${m}:${String(s).padStart(2,'0')}`;
+      coolTxt.textContent = `${m}:${String(s).padStart(2,'0')}`;
     }
   };
-
-  update();
-  cooldownInterval = setInterval(update, 1000);
+  tick();
+  cooldownInterval = setInterval(tick, 1000);
 }
 
 // ─────────────────────────────────────────────────────────────
-// FETCH FROM WORKER
+// FETCH / GEO / MAIN
 // ─────────────────────────────────────────────────────────────
 async function fetchFromWorker(lat, lon) {
-  const url = `${WORKER_URL}?lat=${lat}&lon=${lon}`;
-  const resp = await fetch(url);
+  const resp = await fetch(`${WORKER_URL}?lat=${lat}&lon=${lon}`);
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}));
     throw new Error(body.error ?? `Worker responded ${resp.status}`);
@@ -692,96 +691,71 @@ async function fetchFromWorker(lat, lon) {
   return resp.json();
 }
 
-// ─────────────────────────────────────────────────────────────
-// GEOLOCATION
-// ─────────────────────────────────────────────────────────────
 function getLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by your browser.'));
-      return;
+      reject(new Error('Geolocation is not supported by your browser.')); return;
     }
     navigator.geolocation.getCurrentPosition(
       pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      err => {
-        const msgs = {
-          1: 'Location access was denied. Please allow location access and try again.',
-          2: 'Your location could not be determined. Check your device settings.',
-          3: 'Location request timed out. Please try again.',
-        };
-        reject(new Error(msgs[err.code] ?? 'An unknown location error occurred.'));
-      },
+      err => reject(new Error({
+        1: 'Location access denied. Please allow location and try again.',
+        2: 'Location unavailable. Check your device settings.',
+        3: 'Location request timed out.',
+      }[err.code] ?? 'Unknown location error.')),
       { timeout: 15000, maximumAge: 60000 }
     );
   });
 }
 
-// ─────────────────────────────────────────────────────────────
-// MAIN LOGIC
-// ─────────────────────────────────────────────────────────────
-let currentLat = null;
-let currentLon = null;
+let currentLat = null, currentLon = null;
 
 async function init() {
-  document.getElementById('retry-btn').style.display = 'none';
+  document.getElementById('retry-btn').classList.add('hidden');
   document.getElementById('error-box').classList.add('hidden');
   showStatus('Requesting your location…');
-
   try {
     const { lat, lon } = await getLocation();
-    currentLat = lat;
-    currentLon = lon;
+    currentLat = lat; currentLon = lon;
 
-    // Check cache first
     const cached = loadCache();
     if (isCacheValid(cached, lat, lon)) {
-      console.log('[AQ] Serving from cache (age: ' +
-        Math.round((Date.now() - cached.timestamp) / 60000) + ' min)');
+      console.log('[AQ] Serving from cache');
       renderData(cached.data, true, cached.timestamp);
       return;
     }
 
     showStatus('Finding your nearest PM2.5 station…');
     const data = await fetchFromWorker(lat, lon);
-
     saveCache(data, lat, lon);
     markRefreshed();
-    console.log('[AQ] Fresh API call — data saved to cache');
     renderData(data, false, Date.now());
-
   } catch (err) {
-    console.error('[AQ] Error:', err);
+    console.error('[AQ]', err);
     showStatus(err.message, true);
   }
 }
 
 async function manualRefresh() {
-  const remaining = REFRESH_COOLDOWN - (Date.now() - lastRefreshMs());
-  if (remaining > 0) return; // cooldown not elapsed (button should be disabled anyway)
-
+  if (REFRESH_COOLDOWN - (Date.now() - lastRefreshMs()) > 0) return;
   if (!currentLat || !currentLon) { init(); return; }
-
   showStatus('Fetching fresh data…');
   try {
     const data = await fetchFromWorker(currentLat, currentLon);
     saveCache(data, currentLat, currentLon);
     markRefreshed();
-    console.log('[AQ] Manual refresh — fresh API call');
     renderData(data, false, Date.now());
   } catch (err) {
-    console.error('[AQ] Manual refresh error:', err);
-    // Fall back to cached data if available
+    console.error('[AQ] Refresh error:', err);
     const cached = loadCache();
     if (cached) {
       renderData(cached.data, true, cached.timestamp);
-      alert('Could not fetch fresh data: ' + err.message + '\nShowing cached data.');
     } else {
       showStatus(err.message, true);
     }
   }
 }
 
-// Start on load
 init();
 </script>
 </body>
