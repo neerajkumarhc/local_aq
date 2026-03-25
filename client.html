@@ -128,11 +128,17 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: .65rem;
+      margin-bottom: .65rem;
+    }
+    .metrics-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: .65rem;
       margin-bottom: .75rem;
     }
     @media (max-width: 460px) {
-      .metrics-grid { grid-template-columns: 1fr 1fr; }
-      .metric-cig   { grid-column: 1 / -1; }
+      .metrics-grid   { grid-template-columns: 1fr 1fr; }
+      .metrics-grid-2 { grid-template-columns: 1fr 1fr; }
     }
     .metric-card {
       background: var(--card);
@@ -354,7 +360,7 @@
       </div>
     </div>
 
-    <!-- Metrics -->
+    <!-- Metrics row 1: PM2.5 readings -->
     <div class="metrics-grid">
       <div class="metric-card">
         <div class="metric-label">Current PM2.5</div>
@@ -366,9 +372,23 @@
         <div class="metric-value" id="avg-val">—</div>
         <div class="metric-unit">µg/m³</div>
       </div>
-      <div class="metric-card metric-cig">
-        <div class="metric-label">Cigarette Equiv.</div>
+      <div class="metric-card">
+        <div class="metric-label" id="annual-label">Annual Average</div>
+        <div class="metric-value" id="annual-val">—</div>
+        <div class="metric-unit">µg/m³</div>
+      </div>
+    </div>
+
+    <!-- Metrics row 2: cigarette equivalents -->
+    <div class="metrics-grid-2">
+      <div class="metric-card">
+        <div class="metric-label">24-hr Cigarettes</div>
         <div class="metric-value" id="cig-val">—</div>
+        <div class="metric-unit">cigarettes / day</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label" id="cig-annual-label">Annual Cigarettes</div>
+        <div class="metric-value" id="cig-annual-val">—</div>
         <div class="metric-unit">cigarettes / day</div>
       </div>
     </div>
@@ -602,7 +622,7 @@ function buildMeasureBox(pm25, targetPm25, dotColor, titleText) {
   const projectedLine = alreadyMet
     ? `<div class="measure-already-met">Already within target — no measures needed.</div>`
     : met
-      ? `<div class="measure-projected">Projected exposure: <strong>${fmt(projected)} µg/m³</strong></div>`
+      ? `<div class="measure-projected">Projected daily avg: <strong>${fmt(projected)} µg/m³</strong></div>`
       : `<div class="measure-unachievable">Cannot be fully achieved — best effort shown.</div>
          <div class="measure-projected">Best projected: <strong>${fmt(projected)} µg/m³</strong></div>`;
 
@@ -636,10 +656,18 @@ function renderData(data, fromCache, cacheTimestamp) {
   document.getElementById('band-who').textContent         = band.whoRef;
 
   // Metrics
-  document.getElementById('current-val').textContent = fmt(current);
-  document.getElementById('avg-val').textContent     = fmt(avg);
-  const cigs = avg != null ? avg / 22 : null;
-  document.getElementById('cig-val').textContent = cigs != null ? fmt(cigs, 1) : '—';
+  const annual     = data.avgAnnual ?? null;
+  const yearLabel  = data.annualYear ? `${data.annualYear} Average` : 'Annual Average';
+  const cigYearLabel = data.annualYear ? `${data.annualYear} Cigarettes` : 'Annual Cigarettes';
+  const cigs       = avg    != null ? avg    / 22 : null;
+  const cigsAnnual = annual != null ? annual / 22 : null;
+  document.getElementById('current-val').textContent    = fmt(current);
+  document.getElementById('avg-val').textContent        = fmt(avg);
+  document.getElementById('annual-val').textContent     = annual != null ? fmt(annual) : '—';
+  document.getElementById('annual-label').textContent   = yearLabel;
+  document.getElementById('cig-annual-label').textContent = cigYearLabel;
+  document.getElementById('cig-val').textContent        = cigs        != null ? fmt(cigs, 1)       : '—';
+  document.getElementById('cig-annual-val').textContent = cigsAnnual  != null ? fmt(cigsAnnual, 1) : '—';
 
   // Cache badge
   const badgeEl = document.getElementById('cache-badge');
@@ -678,7 +706,7 @@ function renderData(data, fromCache, cacheTimestamp) {
   document.getElementById('station-info').textContent =
     `Station: ${parts.join(', ')}${distKm}` + (ownerStr ? ` · Operated by: ${ownerStr}` : '');
 
-  console.log(`[AQ] Rendered — source: ${fromCache ? 'cache' : 'live'}, PM2.5: current=${current} avg24h=${avg}, band: ${band.name}`);
+  console.log(`[AQ] Rendered — source: ${fromCache ? 'cache' : 'live'}, PM2.5: current=${current} avg24h=${avg} annual=${annual}, band: ${band.name}`);
   showData();
 }
 
