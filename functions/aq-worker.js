@@ -97,9 +97,15 @@ export async function onRequest({ request, env }) {
     }
 
     // ── Step 2: Latest measurement ──
+    // Note: sort=desc is unreliable on this endpoint — fetch a recent window
+    // and pick the newest result client-side instead.
+    const now = new Date();
+    const recent48h = new Date(now.getTime() - 48 * 60 * 60 * 1000);
     const latestUrl =
       `https://api.openaq.org/v3/sensors/${pm25Sensor.id}/measurements` +
-      `?limit=1&order_by=datetime&sort=desc`;
+      `?datetime_from=${recent48h.toISOString()}` +
+      `&datetime_to=${now.toISOString()}` +
+      `&limit=50`;
 
     const latestResp = await fetch(latestUrl, { headers });
     let currentValue = null;
@@ -108,13 +114,18 @@ export async function onRequest({ request, env }) {
     if (latestResp.ok) {
       const d = await latestResp.json();
       if (d.results?.length) {
-        currentValue = d.results[0].value;
-        lastUpdated = d.results[0].datetime?.to ?? d.results[0].datetime?.from ?? null;
+        // Pick the result with the most recent period end time
+        const latest = d.results.reduce((best, r) => {
+          const t = r.period?.datetimeTo?.utc ?? r.period?.datetimeFrom?.utc ?? '';
+          const bestT = best.period?.datetimeTo?.utc ?? best.period?.datetimeFrom?.utc ?? '';
+          return t > bestT ? r : best;
+        });
+        currentValue = latest.value;
+        lastUpdated = latest.period?.datetimeTo?.utc ?? latest.period?.datetimeFrom?.utc ?? null;
       }
     }
 
     // ── Step 3: 24-hour rolling average ──
-    const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const avgUrl =
       `https://api.openaq.org/v3/sensors/${pm25Sensor.id}/measurements` +
@@ -187,6 +198,7 @@ export async function onRequest({ request, env }) {
         owner: location.owner?.name ?? null,
         provider: location.provider?.name ?? null,
       },
+      sensorId: pm25Sensor.id,
       current: {
         value: roundedCurrent,
         unit: pm25Sensor.parameter?.units ?? 'µg/m³',
