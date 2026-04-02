@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Take Control of Your Air</title>
+  <title>Air Quality Monitor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -442,7 +442,7 @@
       <p class="guidance-desc" id="guidance-desc"></p>
     </div>
 
-    <div class="section-label">Recommended Measures</div>
+    <div class="section-label" id="measures-label">Recommended Measures</div>
     <div class="measures-grid">
       <div class="measure-box" id="box-ideal"></div>
       <div class="measure-box" id="box-acceptable"></div>
@@ -727,6 +727,10 @@ function renderData(data, fromCache, cacheTimestamp) {
   document.getElementById('guidance-band-name').textContent  = band.name;
   document.getElementById('guidance-who').textContent        = band.whoRef;
   document.getElementById('guidance-desc').textContent       = band.description;
+
+  // Measures section label
+  document.getElementById('measures-label').textContent =
+    avg != null ? 'Recommended Measures · based on 24h average' : 'Recommended Measures · based on current reading';
 
   // Two measures boxes
   document.getElementById('box-ideal').innerHTML =
