@@ -74,13 +74,18 @@ export async function onRequest({ request, env }) {
       );
     }
 
-    // Pick first result that has a PM2.5 sensor
+    // Pick first result that has an active PM2.5 sensor
+    // A sensor is considered active if its lastUpdated is within the last 48 hours
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
     let location = null;
     let pm25Sensor = null;
     for (const loc of locData.results) {
-      const sensor = loc.sensors?.find(
-        s => s.parameter?.name === 'pm25' || s.parameter?.name === 'PM2.5'
-      );
+      const sensor = loc.sensors?.find(s => {
+        const name = s.parameter?.name;
+        if (name !== 'pm25' && name !== 'PM2.5') return false;
+        const lastUpdated = s.lastUpdated ?? s.lastValue?.datetime?.to ?? null;
+        return lastUpdated ? lastUpdated >= cutoff : true; // include if no date info
+      });
       if (sensor) { location = loc; pm25Sensor = sensor; break; }
     }
 
@@ -143,7 +148,7 @@ export async function onRequest({ request, env }) {
     // ── Step 4: Annual average via /years endpoint ──
     const yearsUrl =
       `https://api.openaq.org/v3/sensors/${pm25Sensor.id}/years` +
-      `?limit=2`;
+      `?limit=5&order_by=datetime&sort=desc`;
 
     const yearsResp = await fetch(yearsUrl, { headers });
     let avgAnnual = null;
@@ -153,6 +158,12 @@ export async function onRequest({ request, env }) {
     if (yearsResp.ok) {
       const d = await yearsResp.json();
       if (d.results?.length) {
+        // Sort descending by year as a safety net in case API ignores sort param
+        d.results.sort((a, b) => {
+          const yearA = new Date(a.period?.datetimeFrom?.utc ?? a.datetime?.from ?? 0).getFullYear();
+          const yearB = new Date(b.period?.datetimeFrom?.utc ?? b.datetime?.from ?? 0).getFullYear();
+          return yearB - yearA;
+        });
         const r = d.results[0];
         const rawAvg = r.summary?.avg ?? r.value ?? null;
         if (rawAvg !== null) avgAnnual = Math.round(rawAvg * 10) / 10;
