@@ -315,6 +315,32 @@
       margin-top: .2rem;
     }
 
+    /* ── CTA ── */
+    .cta-block {
+      margin-top: 1.25rem;
+      background: var(--primary);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .cta-block img {
+      height: 36px;
+      width: auto;
+      flex-shrink: 0;
+    }
+    .cta-text {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -.01em;
+    }
+    @media (max-width: 460px) {
+      .cta-block { flex-direction: column; text-align: center; }
+    }
+
     /* ── Footer ── */
     footer {
       margin-top: 1.5rem;
@@ -416,6 +442,12 @@
     <div class="measures-grid">
       <div class="measure-box" id="box-ideal"></div>
       <div class="measure-box" id="box-acceptable"></div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-block">
+      <img src="logo.png" alt="HiboCare" />
+      <span class="cta-text">Take control of your air</span>
     </div>
 
     <!-- Footer -->
