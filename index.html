@@ -318,13 +318,16 @@
     /* ── CTA ── */
     .cta-block {
       margin-top: 1.25rem;
-      background: var(--primary);
+      background: var(--card);
+      border: 1px solid var(--border);
       border-radius: var(--radius);
+      box-shadow: var(--shadow);
       padding: 1.25rem 1.5rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
+      text-decoration: none;
     }
     .cta-block img {
       height: 36px;
@@ -334,9 +337,10 @@
     .cta-text {
       font-size: 1.05rem;
       font-weight: 700;
-      color: #fff;
+      color: var(--primary);
       letter-spacing: -.01em;
     }
+    .cta-block:hover .cta-text { text-decoration: underline; }
     @media (max-width: 460px) {
       .cta-block { flex-direction: column; text-align: center; }
     }
@@ -445,10 +449,10 @@
     </div>
 
     <!-- CTA -->
-    <div class="cta-block">
+    <a class="cta-block" href="https://www.hibocare.com" target="_blank" rel="noopener">
       <img src="logo.png" alt="HiboCare" />
       <span class="cta-text">Take control of your air</span>
-    </div>
+    </a>
 
     <!-- Footer -->
     <footer>
