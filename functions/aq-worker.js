@@ -157,12 +157,9 @@ export async function onRequest({ request, env }) {
     }
 
     // ── Step 4: Annual average via /years endpoint ──
-    const threeYearsAgo = new Date(now.getTime() - 3 * 365 * 24 * 60 * 60 * 1000);
     const yearsUrl =
       `https://api.openaq.org/v3/sensors/${pm25Sensor.id}/years` +
-      `?datetime_from=${threeYearsAgo.toISOString()}` +
-      `&datetime_to=${now.toISOString()}` +
-      `&limit=5`;
+      `?limit=50`;
 
     const yearsResp = await fetch(yearsUrl, { headers });
     let avgAnnual = null;
@@ -181,8 +178,8 @@ export async function onRequest({ request, env }) {
         const r = d.results[0];
         const rawAvg = r.summary?.avg ?? r.value ?? null;
         if (rawAvg !== null) avgAnnual = Math.round(rawAvg * 10) / 10;
-        const fromStr = r.period?.datetimeFrom?.utc ?? r.datetime?.from ?? null;
-        if (fromStr) annualYear = new Date(fromStr).getFullYear();
+        const toStr = r.period?.datetimeTo?.utc ?? r.period?.datetimeFrom?.utc ?? null;
+        if (toStr) annualYear = new Date(toStr).getFullYear();
       }
     }
 
