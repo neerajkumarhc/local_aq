@@ -432,7 +432,7 @@
     </div>
 
     <!-- Guidance -->
-    <div class="section-label">Exposure Guidance</div>
+    <div class="section-label" id="guidance-label">Exposure Guidance</div>
     <div class="guidance-card">
       <div class="guidance-band-row">
         <span class="band-dot-sm" id="guidance-dot"></span>
@@ -677,7 +677,8 @@ function renderData(data, fromCache, cacheTimestamp) {
   const current = data.current?.value;
   const avg     = data.avg24h;
   const pm25    = avg ?? current ?? 0;
-  const band    = getBand(pm25);
+  const band        = getBand(pm25);           // guidance + measures: 24h avg preferred
+  const currentBand = getBand(current ?? pm25); // top indicator: current reading preferred
 
   // Dynamic page title
   const locationName = data.location?.locality || data.location?.name || 'Your Location';
@@ -685,11 +686,11 @@ function renderData(data, fromCache, cacheTimestamp) {
   document.getElementById('page-title').textContent    = `Air Quality at ${locationName}`;
   document.getElementById('page-subtitle').textContent = 'PM2.5 · Real-time exposure guidance';
 
-  // Band indicator
-  document.getElementById('band-dot').style.background   = band.color;
-  document.getElementById('band-name').textContent        = band.name;
-  document.getElementById('band-range').textContent       = band.rangeLabel;
-  document.getElementById('band-who').textContent         = band.whoRef;
+  // Band indicator — based on current reading
+  document.getElementById('band-dot').style.background   = currentBand.color;
+  document.getElementById('band-name').textContent        = currentBand.name;
+  document.getElementById('band-range').textContent       = currentBand.rangeLabel;
+  document.getElementById('band-who').textContent         = currentBand.whoRef;
 
   // Metrics
   const annual     = data.avgAnnual ?? null;
@@ -728,7 +729,9 @@ function renderData(data, fromCache, cacheTimestamp) {
   document.getElementById('guidance-who').textContent        = band.whoRef;
   document.getElementById('guidance-desc').textContent       = band.description;
 
-  // Measures section label
+  // Section labels
+  document.getElementById('guidance-label').textContent =
+    avg != null ? 'Exposure Guidance · based on 24h average' : 'Exposure Guidance · based on current reading';
   document.getElementById('measures-label').textContent =
     avg != null ? 'Recommended Measures · based on 24h average' : 'Recommended Measures · based on current reading';
 
